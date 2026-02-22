@@ -16,7 +16,7 @@ cat << EOM
 <body>
     <div class="container">
         <div class="card">
-            <h2>🌐 Obrir nou servei</h2>
+            <h2>Obrir nou servei</h2>
             <form action='/cgi-bin/dmz-agregar.cgi' method='get'>
                 <div class="form-group">
                     <label>Port</label>

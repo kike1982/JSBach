@@ -16,19 +16,19 @@ cat << EOM
     <div class="menu-title">Tallafocs (Firewall)</div>
     <div class="menu-list">
         <a href="/cgi-bin/tallafocs.cgi?comand=iniciar" class="menu-item item-start" target="body">
-            <span class="icon">🚀</span> Iniciar Servei
+            <span class="icon"></span> Iniciar Servei
         </a>
         <a href="/cgi-bin/tallafocs.cgi?comand=aturar" class="menu-item item-stop" target="body">
-            <span class="icon">🛑</span> Aturar Servei
+            <span class="icon"></span> Aturar Servei
         </a>
         <a href="/cgi-bin/tallafocs.cgi?comand=estat" class="menu-item item-status" target="body">
-            <span class="icon">📊</span> Estat Global
+            <span class="icon"></span> Estat Global
         </a>
         <a href="/cgi-bin/tallafocs-configuracio.cgi" class="menu-item item-config" target="body">
-            <span class="icon">🛠️</span> Configuració
+            <span class="icon"></span> Configuració
         </a>
         <a href="/cgi-bin/tallafocs-input.cgi" class="menu-item item-input" target="body">
-            <span class="icon">📥</span> Regles d'Entrada
+            <span class="icon"></span> Regles d'Entrada
         </a>
     </div>
 </body>

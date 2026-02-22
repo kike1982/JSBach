@@ -46,25 +46,25 @@ function validarFormulario() {
     errorBox.innerHTML = '';
 
     if (!nom || !ipmasc || !ippe) {
-        errorBox.innerHTML += '⚠️ Tots els camps són obligatoris.<br>';
+        errorBox.innerHTML += 'Tots els camps són obligatoris.<br>';
         errorBox.style.display = 'block';
         return false;
     }
 
     if (!/^[a-zA-Z0-9_-]+$/.test(nom)) {
-        errorBox.innerHTML += '⚠️ El nom de VLAN només pot contenir lletres, números i guions baixos.<br>';
+        errorBox.innerHTML += 'El nom de VLAN només pot contenir lletres, números i guions baixos.<br>';
         errorBox.style.display = 'block';
         return false;
     }
 
     if (!validaIP(ipmasc)) {
-        errorBox.innerHTML += '⚠️ Format d\'IP/Subxarxa incorrecte.<br>';
+        errorBox.innerHTML += 'Format d\'IP/Subxarxa incorrecte.<br>';
         errorBox.style.display = 'block';
         return false;
     }
 
     if (!validaIP(ippe)) {
-        errorBox.innerHTML += '⚠️ IP/PE incorrecta.<br>';
+        errorBox.innerHTML += 'IP/PE incorrecta.<br>';
         errorBox.style.display = 'block';
         return false;
     }
@@ -87,20 +87,20 @@ for line in "${VLANS[@]}"; do
 done
 
 if [ -z "$FOUND_LINE" ]; then
-    echo "<h2>❌ Error</h2>"
+    echo "<h2>Error</h2>"
     echo "<div class='card' style='text-align:center;'>No s'ha trobat cap VLAN amb VID = $VID</div>"
-    echo "<div class='btn-group'><a href='/cgi-bin/bridge-configurar.cgi' class='btn btn-back'>⬅️ Tornar</a></div>"
+    echo "<div class='btn-group'><a href='/cgi-bin/bridge-configurar.cgi' class='btn btn-back'>⬅Tornar</a></div>"
     echo "</div></body></html>"
     exit 0
 fi
 
 IFS=';' read -r nom vid subnet gw _ <<< "$FOUND_LINE"
 
-echo "    <h2>✏️ Modificar VLAN</h2>"
+echo "    <h2>Modificar VLAN</h2>"
 echo "    <div id='errorBox'></div>"
 echo "    <form name='vlanForm' action='/cgi-bin/bridge-guardar.cgi' method='get' onsubmit='return validarFormulario()'>"
 echo "        <div class='card'>"
-echo "            <div class='card-header'><h3 class='card-title'>📝 Dades d'Identificació</h3></div>"
+echo "            <div class='card-header'><h3 class='card-title'>Dades d'Identificació</h3></div>"
 echo "            <div class='form-group'>"
 echo "                <label>Nom de la VLAN:</label>"
 if [ "$vid" -lt "3" ]; then
@@ -116,7 +116,7 @@ echo "            </div>"
 echo "        </div>"
 
 echo "        <div class='card'>"
-echo "            <div class='card-header'><h3 class='card-title'>🌐 Configuració de Xarxa</h3></div>"
+echo "            <div class='card-header'><h3 class='card-title'>Configuració de Xarxa</h3></div>"
 echo "            <div class='form-group'>"
 echo "                <label>IP / Subxarxa:</label>"
 echo "                <input type='text' name='ipmasc' value='$subnet'>"
@@ -128,8 +128,8 @@ echo "            </div>"
 echo "        </div>"
 
 echo "        <div class='btn-group'>"
-echo "            <a href='/cgi-bin/bridge-configurar.cgi' class='btn btn-back'>⬅️ Tornar</a>"
-echo "            <button type='submit' class='btn btn-submit'>💾 Guardar Canvis</button>"
+echo "            <a href='/cgi-bin/bridge-configurar.cgi' class='btn btn-back'>⬅Tornar</a>"
+echo "            <button type='submit' class='btn btn-submit'>Guardar Canvis</button>"
 echo "        </div>"
 echo "    </form>"
 echo "</div>"

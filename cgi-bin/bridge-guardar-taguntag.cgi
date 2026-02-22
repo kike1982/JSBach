@@ -27,7 +27,7 @@ cat << EOM
 <body>
     <div class="container">
         <div class="card">
-            <span class="success-icon">🏷️</span>
+            <span class="success-icon"></span>
             <h2>Tag-Untag Modificat</h2>
 EOM
 

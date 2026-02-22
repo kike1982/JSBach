@@ -14,9 +14,9 @@ echo ""
     <meta charset="utf-8">
 </head>
 <body>
-    <h4><a href="/cgi-bin/enrutar.cgi?comand=iniciar&" target="body">🚀 Iniciar enrutar</a></h4>
-    <h4><a href="/cgi-bin/enrutar.cgi?comand=aturar&" target="body">🛑 Aturar enrutar</a></h4>
-    <h4><a href="/cgi-bin/enrutar.cgi?comand=estat&" target="body">📊 Estat Actual</a></h4>
+    <h4><a href="/cgi-bin/enrutar.cgi?comand=iniciar&" target="body">Iniciar enrutar</a></h4>
+    <h4><a href="/cgi-bin/enrutar.cgi?comand=aturar&" target="body">Aturar enrutar</a></h4>
+    <h4><a href="/cgi-bin/enrutar.cgi?comand=estat&" target="body">Estat Actual</a></h4>
 </body>
 </html>
 EOM

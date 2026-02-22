@@ -93,14 +93,14 @@ window.addEventListener("DOMContentLoaded", toggleManual);
 </head>
 <body>
 <div class="container">
-    <h2>⚙️ Configuració WAN</h2>
+    <h2>Configuració WAN</h2>
 
     <form action="/cgi-bin/ifwan-guardar.cgi" method="get" onsubmit="return validarForm()">
         
         <!-- SECCIÓ 1: MODE -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">🌐 Mode de configuració</h3>
+                <h3 class="card-title">Mode de configuració</h3>
             </div>
             <div class="radio-group">
 EOF
@@ -115,7 +115,7 @@ cat <<'EOF'
         <!-- SECCIÓ 2: INTERFÍCIES -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">🔌 Interfície</h3>
+                <h3 class="card-title">Interfície</h3>
             </div>
             <div class="radio-group">
 EOF
@@ -133,7 +133,7 @@ cat <<'EOF'
         <!-- SECCIÓ 3: CONFIGURACIÓ MANUAL -->
         <div id="manual-section" class="card hidden">
             <div class="card-header">
-                <h3 class="card-title">📝 Dades de Xarxa</h3>
+                <h3 class="card-title">Dades de Xarxa</h3>
             </div>
 EOF
 
@@ -145,7 +145,7 @@ echo "            <div class='form-group'><label>Servidor DNS:</label><input typ
 cat <<'EOF'
         </div>
 
-        <button type="submit" class="btn-submit">💾 Guardar Configuració</button>
+        <button type="submit" class="btn-submit">Guardar Configuració</button>
     </form>
 </div>
 </body>

@@ -27,8 +27,8 @@ cat << EOM
 <body>
 <div class="container">
     <div class="header-actions">
-        <h2>🌐 Configuració DMZ</h2>
-        <a href="/cgi-bin/dmz-nou-servei.cgi" class="btn btn-success">➕ Obrir nou servei</a>
+        <h2>Configuració DMZ</h2>
+        <a href="/cgi-bin/dmz-nou-servei.cgi" class="btn btn-success">Obrir nou servei</a>
     </div>
 
     <div class="card">
@@ -59,7 +59,7 @@ EOM
     echo "  <td><span class='badge badge-proto'>$PROTO</span></td>"
     echo "  <td><code>$IP_DMZ</code></td>"
     echo "  <td style='text-align:right'>"
-    echo "    <a href='/cgi-bin/dmz-eliminar.cgi?port=$PORT&proto=$PROTO&ipdmz=$IP_DMZ' class='btn btn-danger'>🗑️ Eliminar</a>"
+    echo "    <a href='/cgi-bin/dmz-eliminar.cgi?port=$PORT&proto=$PROTO&ipdmz=$IP_DMZ' class='btn btn-danger'>Eliminar</a>"
     echo "  </td>"
     echo "</tr>"
 done

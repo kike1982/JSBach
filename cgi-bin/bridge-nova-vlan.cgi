@@ -18,7 +18,7 @@ cat << EOM
 </head>
 <body>
 <div class="container">
-    <h2>✨ Nova VLAN</h2>
+    <h2>Nova VLAN</h2>
     <div id="errorBox" class="error-box"></div>
 EOM
 
@@ -54,37 +54,37 @@ function validarFormulario() {
     errorBox.innerHTML = '';
 
     if (!nom || !vid || !ipmasc || !ippe) {
-        errorBox.innerHTML += '⚠️ Tots els camps són obligatoris.<br>';
+        errorBox.innerHTML += 'Tots els camps són obligatoris.<br>';
         errorBox.style.display = 'block';
         return false;
     }
 
     if (!/^[0-9]+$/.test(vid)) {
-        errorBox.innerHTML += '⚠️ El VID ha de ser un número.<br>';
+        errorBox.innerHTML += 'El VID ha de ser un número.<br>';
         errorBox.style.display = 'block';
         return false;
     }
 
     if (!validaIP(ipmasc)) {
-        errorBox.innerHTML += '⚠️ Format d\'IP/Subxarxa incorrecte.<br>';
+        errorBox.innerHTML += 'Format d\'IP/Subxarxa incorrecte.<br>';
         errorBox.style.display = 'block';
         return false;
     }
 
     if (!validaIP(ippe)) {
-        errorBox.innerHTML += '⚠️ IP/PE incorrecta.<br>';
+        errorBox.innerHTML += 'IP/PE incorrecta.<br>';
         errorBox.style.display = 'block';
         return false;
     }
 
     for (let v of vlansExistents) {
         if (v.vid === vid) {
-            errorBox.innerHTML += '⚠️ Ja existeix una VLAN amb el VID ' + vid + '.<br>';
+            errorBox.innerHTML += 'Ja existeix una VLAN amb el VID ' + vid + '.<br>';
             errorBox.style.display = 'block';
             return false;
         }
         if (v.nom.toLowerCase() === nom.toLowerCase()) {
-            errorBox.innerHTML += '⚠️ Ja existeix una VLAN amb el nom "' + nom + '".<br>';
+            errorBox.innerHTML += 'Ja existeix una VLAN amb el nom "' + nom + '".<br>';
             errorBox.style.display = 'block';
             return false;
         }
@@ -97,7 +97,7 @@ EOF
 cat <<'EOF'
     <form name="vlanForm" action="/cgi-bin/bridge-guardar.cgi" method="get" onsubmit="return validarFormulario()">
         <div class="card">
-            <div class="card-header"><h3 class="card-title">📝 Dades d'Identificació</h3></div>
+            <div class="card-header"><h3 class="card-title">Dades d'Identificació</h3></div>
             <div class="form-group">
                 <label>Nom de la VLAN:</label>
                 <input type="text" name="nom" placeholder="Ex: Produccio">
@@ -109,7 +109,7 @@ cat <<'EOF'
         </div>
 
         <div class="card">
-            <div class="card-header"><h3 class="card-title">🌐 Configuració de Xarxa</h3></div>
+            <div class="card-header"><h3 class="card-title">Configuració de Xarxa</h3></div>
             <div class="form-group">
                 <label>IP / Subxarxa:</label>
                 <input type="text" name="ipmasc" placeholder="Ex: 192.168.10.0/24">
@@ -121,8 +121,8 @@ cat <<'EOF'
         </div>
 
         <div class="btn-group">
-            <a href="/cgi-bin/bridge-configurar.cgi" class="btn btn-back">⬅️ Tornar</a>
-            <button type="submit" class="btn btn-submit">🚀 Crear VLAN</button>
+            <a href="/cgi-bin/bridge-configurar.cgi" class="btn btn-back">⬅Tornar</a>
+            <button type="submit" class="btn btn-submit">Crear VLAN</button>
         </div>
     </form>
 </div>

@@ -36,16 +36,16 @@ for line in "${VLANS[@]}"; do
 done
 
 if [ -z "$FOUND_LINE" ]; then
-    echo "<h2>❌ Error</h2>"
+    echo "<h2>Error</h2>"
     echo "<div class='card'>No s'ha trobat cap VLAN amb VID = $VID</div>"
-    echo "<a href='/cgi-bin/bridge-configurar.cgi' class='btn btn-back'>⬅️ Tornar</a>"
+    echo "<a href='/cgi-bin/bridge-configurar.cgi' class='btn btn-back'>⬅Tornar</a>"
     echo "</div></body></html>"
     exit 0
 fi
 
 IFS=';' read -r nom vid subnet gw _ <<< "$FOUND_LINE"
 
-echo "    <h2>⚠️ Confirmar Eliminació</h2>"
+echo "    <h2>Confirmar Eliminació</h2>"
 echo "    <div class='card'>"
 echo "        <div class='warning-box'>Estàs segur que vols eliminar aquesta VLAN? Aquesta acció no es pot desfer.</div>"
 echo "        <div class='info-grid'>"
@@ -57,8 +57,8 @@ echo "        </div>"
 echo "        <form action='/cgi-bin/bridge-aplicar-esborrar.cgi' method='get'>"
 echo "            <input type='hidden' name='vid' value='$vid'>"
 echo "            <div class='btn-group'>"
-echo "                <a href='/cgi-bin/bridge-configurar.cgi' class='btn btn-back'>⬅️ Cancel·lar</a>"
-echo "                <button type='submit' class='btn btn-delete'>🗑️ Esborrar VLAN</button>"
+echo "                <a href='/cgi-bin/bridge-configurar.cgi' class='btn btn-back'>⬅Cancel·lar</a>"
+echo "                <button type='submit' class='btn btn-delete'>Esborrar VLAN</button>"
 echo "            </div>"
 echo "        </form>"
 echo "    </div>"

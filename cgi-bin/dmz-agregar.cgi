@@ -27,7 +27,7 @@ PROTO=$(echo "$QUERY_STRING" | sed -n 's/^.*proto=\([^&]*\).*$/\1/p')
 IP_DMZ=$(echo "$QUERY_STRING" | sed -n 's/^.*ipdmz=\([^&]*\).*$/\1/p')
 
 echo "      <div class='card'>"
-echo "          <span class='icon'>➕</span>"
+echo "          <span class='icon'></span>"
 echo "          <h2>Servei DMZ Afegit</h2>"
 echo "          <div class='info-grid'>"
 echo "              <div class='info-item'><span class='info-label'>Port</span><span class='info-value'>$PORT</span></div>"

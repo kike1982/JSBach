@@ -16,8 +16,8 @@ cat << EOM
 <body>
 <div class="container">
     <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1 style="color:#f8fafc; font-size:1.8rem;">🌉 Gestió de VLANs</h1>
-        <a href="/cgi-bin/bridge-nova-vlan.cgi" class="btn btn-create">➕ Nova VLAN</a>
+        <h1 style="color:#f8fafc; font-size:1.8rem;">Gestió de VLANs</h1>
+        <a href="/cgi-bin/bridge-nova-vlan.cgi" class="btn btn-create">Nova VLAN</a>
     </div>
 EOM
 
@@ -25,7 +25,7 @@ VLAN_DATA="$("$DIR"/"$PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli bridge configurar 
 mapfile -t VLANS <<< "$VLAN_DATA"
 
 if [ "${#VLANS[@]}" -lt 2 ]; then
-    echo "<div class='card' style='text-align:center; color:#ef4444;'>⚠️ No hi ha prou VLANs definides al sistema.</div>"
+    echo "<div class='card' style='text-align:center; color:#ef4444;'>No hi ha prou VLANs definides al sistema.</div>"
     echo "</div></body></html>"
     exit 0
 fi
@@ -52,9 +52,9 @@ render_vlan_table() {
         echo "  <td>$subnet</td>"
         echo "  <td>$gw</td>"
         echo "  <td>"
-        echo "    <a href='/cgi-bin/bridge-modificar.cgi?vid=$vid' class='btn btn-edit'>✏️ Modificar</a>"
+        echo "    <a href='/cgi-bin/bridge-modificar.cgi?vid=$vid' class='btn btn-edit'>Modificar</a>"
         if [ "$i" -gt 1 ]; then
-            echo "    <a href='/cgi-bin/bridge-esborrar.cgi?vid=$vid' class='btn btn-delete'>🗑️ Esborrar</a>"
+            echo "    <a href='/cgi-bin/bridge-esborrar.cgi?vid=$vid' class='btn btn-delete'>Esborrar</a>"
         fi
         echo "  </td>"
         echo "</tr>"
@@ -65,14 +65,14 @@ render_vlan_table() {
 }
 
 # VLAN ADMINISTRACIÓ
-render_vlan_table "🛡️ VLAN ADMINISTRACIÓ" 0 0
+render_vlan_table "VLAN ADMINISTRACIÓ" 0 0
 
 # VLAN DMZ
-render_vlan_table "🔥 VLAN DMZ" 1 1
+render_vlan_table "VLAN DMZ" 1 1
 
 # Otras VLANs
 if [ "${#VLANS[@]}" -gt 2 ]; then
-    render_vlan_table "🌐 Altres VLANs" 2 $(( ${#VLANS[@]} - 1 ))
+    render_vlan_table "Altres VLANs" 2 $(( ${#VLANS[@]} - 1 ))
 fi
 
 echo "</div></body></html>"

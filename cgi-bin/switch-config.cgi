@@ -35,7 +35,7 @@ cat << EOM
 </head>
 <body>
 
-<h1>⚙️ Configuració de Switches</h1>
+<h1>Configuració de Switches</h1>
 
 EOM
 
@@ -78,7 +78,7 @@ cat << EOM
             </select>
         </div>
         
-        <button type="submit" class="btn btn-success" style="width: 100%;">💾 Guardar Switch</button>
+        <button type="submit" class="btn btn-success" style="width: 100%;">Guardar Switch</button>
     </form>
 </div>
 
@@ -109,7 +109,7 @@ if [ -f "$SWITCHES_FILE" ]; then
         echo "<form method='POST' style='margin:0;'>"
         echo "<input type='hidden' name='action' value='del_switch'>"
         echo "<input type='hidden' name='ip' value='$ip'>"
-        echo "<button type='submit' class='btn btn-danger' style='padding: 5px 10px; font-size: 0.8rem;'>🗑️ Eliminar</button>"
+        echo "<button type='submit' class='btn btn-danger' style='padding: 5px 10px; font-size: 0.8rem;'>Eliminar</button>"
         echo "</form>"
         echo "</td>"
         echo "</tr>"

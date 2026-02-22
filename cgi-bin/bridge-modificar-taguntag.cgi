@@ -22,10 +22,10 @@ cat << EOM
 </head>
 <body>
     <div class="container">
-        <h2>🏷️ Modificar Tag-Untag</h2>
+        <h2>Modificar Tag-Untag</h2>
         <form action='/cgi-bin/bridge-guardar-taguntag.cgi' method='get'>
             <div class="card">
-                <div class="card-header"><h3 class="card-title">🔌 Interfaç de Xarxa</h3></div>
+                <div class="card-header"><h3 class="card-title">Interfaç de Xarxa</h3></div>
                 <div class="form-group">
                     <label>Nom de l'interfaç:</label>
                     <input type="text" name="int" value="$int" readonly>
@@ -33,7 +33,7 @@ cat << EOM
             </div>
 
             <div class="card">
-                <div class="card-header"><h3 class="card-title">🏷️ Configuració VLAN</h3></div>
+                <div class="card-header"><h3 class="card-title">Configuració VLAN</h3></div>
                 <div class="form-group">
                     <label>VLAN UNTAG (PVID):</label>
                     <input type="text" name="untag" value="$VLAN_UNTAG" 
@@ -49,8 +49,8 @@ cat << EOM
             </div>
 
             <div class="btn-group">
-                <a href="/cgi-bin/bridge-configurar-taguntag.cgi" class="btn btn-back">⬅️ Tornar</a>
-                <button type="submit" class="btn btn-submit">💾 Guardar Canvis</button>
+                <a href="/cgi-bin/bridge-configurar-taguntag.cgi" class="btn btn-back">⬅Tornar</a>
+                <button type="submit" class="btn btn-submit">Guardar Canvis</button>
             </div>
         </form>
         <div class='footer'>Gestió de xarxes © 2026</div>

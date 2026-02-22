@@ -31,8 +31,8 @@ get_status() {
             fi
             ;;
         tallafocs)
-            # Aislamos solo la tabla filter (antes de "📊 NAT") para evitar falsos positivos con enrutamiento
-            if /usr/local/JSBach/scripts/client_srv_cli tallafocs estat | sed '/📊 NAT/,$d' | grep -v "📊" | grep -v "Chain" | grep -v "policy" | grep -v "num" | grep -v "pkts" | grep -v "^$" | grep -q "."; then
+            # Aislamos solo la tabla filter (antes de "NAT") para evitar falsos positivos con enrutamiento
+            if /usr/local/JSBach/scripts/client_srv_cli tallafocs estat | sed '/NAT/,$d' | grep -v "" | grep -v "Chain" | grep -v "policy" | grep -v "num" | grep -v "pkts" | grep -v "^$" | grep -q "."; then
                 res="ACTIVAT"
             else
                 res="DESACTIVAT"
@@ -85,7 +85,7 @@ cat <<EOF
 </head>
 <body>
     <div class="container">
-        <h1>📊 Centro de Control JSBach</h1>
+        <h1>Centro de Control JSBach</h1>
 EOF
 
 # --- Helper to render module card ---
@@ -202,21 +202,21 @@ CONTENT_SWITCH="
 # --- Mostrar módulos ---
 if [ -z "$MODULO" ]; then
     # Por defecto mostrar todos
-    render_card "wan" "WAN" "🌐" "card-wan" "$CONTENT_WAN"
-    render_card "enrutar" "Enrutar" "⚡" "card-enrutar" "$CONTENT_ENRUTAR"
-    render_card "bridge" "Bridge" "🌉" "card-bridge" "$CONTENT_BRIDGE"
-    render_card "tallafocs" "Tallafocs" "🔥" "card-tallafocs" "$CONTENT_TALLAFOCS"
-    render_card "dmz" "DMZ" "🛡️" "card-dmz" "$CONTENT_DMZ"
-    render_card "switch" "Switches" "🔌" "card-switch" "$CONTENT_SWITCH"
+    render_card "wan" "WAN" "" "card-wan" "$CONTENT_WAN"
+    render_card "enrutar" "Enrutar" "" "card-enrutar" "$CONTENT_ENRUTAR"
+    render_card "bridge" "Bridge" "" "card-bridge" "$CONTENT_BRIDGE"
+    render_card "tallafocs" "Tallafocs" "" "card-tallafocs" "$CONTENT_TALLAFOCS"
+    render_card "dmz" "DMZ" "" "card-dmz" "$CONTENT_DMZ"
+    render_card "switch" "Switches" "" "card-switch" "$CONTENT_SWITCH"
 else
     case "$MODULO" in
-        wan) render_card "wan" "WAN" "🌐" "card-wan" "$CONTENT_WAN" ;;
-        enrutar) render_card "enrutar" "Enrutar" "⚡" "card-enrutar" "$CONTENT_ENRUTAR" ;;
-        bridge) render_card "bridge" "Bridge" "🌉" "card-bridge" "$CONTENT_BRIDGE" ;;
-        tallafocs) render_card "tallafocs" "Tallafocs" "🔥" "card-tallafocs" "$CONTENT_TALLAFOCS" ;;
-        dmz) render_card "dmz" "DMZ" "🛡️" "card-dmz" "$CONTENT_DMZ" ;;
-        switch) render_card "switch" "Switches" "🔌" "card-switch" "$CONTENT_SWITCH" ;;
-        *) echo "<div class='no-selection'>⚠️ Módulo <code>$MODULO</code> no encontrado.</div>" ;;
+        wan) render_card "wan" "WAN" "" "card-wan" "$CONTENT_WAN" ;;
+        enrutar) render_card "enrutar" "Enrutar" "" "card-enrutar" "$CONTENT_ENRUTAR" ;;
+        bridge) render_card "bridge" "Bridge" "" "card-bridge" "$CONTENT_BRIDGE" ;;
+        tallafocs) render_card "tallafocs" "Tallafocs" "" "card-tallafocs" "$CONTENT_TALLAFOCS" ;;
+        dmz) render_card "dmz" "DMZ" "" "card-dmz" "$CONTENT_DMZ" ;;
+        switch) render_card "switch" "Switches" "" "card-switch" "$CONTENT_SWITCH" ;;
+        *) echo "<div class='no-selection'>Módulo <code>$MODULO</code> no encontrado.</div>" ;;
     esac
 fi
 

@@ -15,9 +15,9 @@ cat << EOM
 </head>
 <body>
 <div class="container">
-    <h2>🛡️ Configuració Tallafocs</h2>
+    <h2>Configuració Tallafocs</h2>
     
-    <h3>📶 ESTAT DE LES VLANS</h3>
+    <h3>ESTAT DE LES VLANS</h3>
 EOM
 
 for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
@@ -45,24 +45,24 @@ for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
     
     case "$estat_vlan" in
         "CONNECTADA")
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=desconnectar' class='btn btn-danger'>🔌 Tallar</a>"
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar_port_wls' class='btn btn-warning'>🌐 Ports WLS</a>"
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=aillar' class='btn btn-danger'>🔒 Aïllar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=desconnectar' class='btn btn-danger'>Tallar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar_port_wls' class='btn btn-warning'>Ports WLS</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=aillar' class='btn btn-danger'>Aïllar</a>"
             ;;
         "DESCONNECTADA")
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar' class='btn btn-success'>🔗 Connectar</a>"
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar_port_wls' class='btn btn-warning'>🌐 Ports WLS</a>"
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=aillar' class='btn btn-danger'>🔒 Aïllar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar' class='btn btn-success'>Connectar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar_port_wls' class='btn btn-warning'>Ports WLS</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=aillar' class='btn btn-danger'>Aïllar</a>"
             ;;
         "CONNECTADA PORT WLS")
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=desconnectar' class='btn btn-danger'>🔌 Tallar</a>"
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar' class='btn btn-success'>🔗 Full Internet</a>"
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=aillar' class='btn btn-danger'>🔒 Aïllar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=desconnectar' class='btn btn-danger'>Tallar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar' class='btn btn-success'>Full Internet</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=aillar' class='btn btn-danger'>Aïllar</a>"
             ;;
         "AILLADA")
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=desconnectar' class='btn btn-danger'>🔌 Tallar</a>"
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar' class='btn btn-success'>🔗 Connectar</a>"
-            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=desaillar' class='btn btn-success'>🔓 Desaïllar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=desconnectar' class='btn btn-danger'>Tallar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=connectar' class='btn btn-success'>Connectar</a>"
+            echo "<a href='tallafocs-conndeconn.cgi?id=$id&accio=desaillar' class='btn btn-success'>Desaïllar</a>"
             ;;
     esac
 
@@ -71,7 +71,7 @@ for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
     echo "</div>"
 done
 
-echo "<h3>📝 WHITELIST PORTS</h3>"
+echo "<h3>WHITELIST PORTS</h3>"
 echo "<div class='card'>"
 echo "  <table>"
 echo "    <thead><tr><th>Protocol</th><th>Port</th><th style='text-align:right'>Accions</th></tr></thead>"
@@ -83,16 +83,16 @@ for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"); do
     echo "<tr>"
     echo "  <td><span class='badge badge-wls'>$PROTOCOL</span></td>"
     echo "  <td><strong>$PORT</strong></td>"
-    echo "  <td style='text-align:right'><a href='tallafocs-ports-wls.cgi?accio=eliminar_port_wls&protocol=$PROTOCOL&port=$PORT' class='btn btn-danger'>🗑️ Eliminar</a></td>"
+    echo "  <td style='text-align:right'><a href='tallafocs-ports-wls.cgi?accio=eliminar_port_wls&protocol=$PROTOCOL&port=$PORT' class='btn btn-danger'>Eliminar</a></td>"
     echo "</tr>"
 done
 
 echo "    </tbody>"
 echo "  </table>"
-echo "  <div class='add-section'><a href='tallafocs-nova-port-wls.cgi' class='btn btn-success'>➕ Afegir Port</a></div>"
+echo "  <div class='add-section'><a href='tallafocs-nova-port-wls.cgi' class='btn btn-success'>Afegir Port</a></div>"
 echo "</div>"
 
-echo "<h3>🏢 IPS AMB ACCÉS PERSONALITZAT</h3>"
+echo "<h3>IPS AMB ACCÉS PERSONALITZAT</h3>"
 echo "<div class='card'>"
 echo "  <table>"
 echo "    <thead><tr><th>VID</th><th>IP</th><th>MAC</th><th style='text-align:right'>Accions</th></tr></thead>"
@@ -106,13 +106,13 @@ for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"); do
     echo "  <td><span class='badge badge-conn'>$VID</span></td>"
     echo "  <td><strong>$IP</strong></td>"
     echo "  <td><code style='color:#94a3b8'>$MAC</code></td>"
-    echo "  <td style='text-align:right'><a href='tallafocs-ips-wls.cgi?accio=eliminar_ip_wls&vid=$VID&ip=$IP&mac=$MAC' class='btn btn-danger'>🗑️ Eliminar</a></td>"
+    echo "  <td style='text-align:right'><a href='tallafocs-ips-wls.cgi?accio=eliminar_ip_wls&vid=$VID&ip=$IP&mac=$MAC' class='btn btn-danger'>Eliminar</a></td>"
     echo "</tr>"
 done
 
 echo "    </tbody>"
 echo "  </table>"
-echo "  <div class='add-section'><a href='tallafocs-nova-ip-wls.cgi' class='btn btn-success'>➕ Afegir IP</a></div>"
+echo "  <div class='add-section'><a href='tallafocs-nova-ip-wls.cgi' class='btn btn-success'>Afegir IP</a></div>"
 echo "</div>"
 
 cat << EOM

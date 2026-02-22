@@ -15,11 +15,11 @@ cat << EOM
 </head>
 <body>
 <div class="container">
-    <h2>➕ Afegir IP amb Accés No Restringit</h2>
+    <h2>Afegir IP amb Accés No Restringit</h2>
     <form action='/cgi-bin/tallafocs-ips-wls.cgi' method='get'>
         <input type='hidden' name='accio' value='afegir_ip_wls'>
         <div class="card">
-            <div class="card-header"><h3 class="card-title">🔍 Identificació de l'Host</h3></div>
+            <div class="card-header"><h3 class="card-title">Identificació de l'Host</h3></div>
             <div class="form-group">
                 <label>VLAN ID (VID):</label>
                 <input type='text' name='vid' required pattern='^[0-9]+$' title='Només números' placeholder='Ex: 10'>
@@ -35,8 +35,8 @@ cat << EOM
         </div>
 
         <div class="btn-group">
-            <a href="/cgi-bin/tallafocs-configuracio.cgi" class="btn btn-back">⬅️ Tornar</a>
-            <button type="submit" class="btn btn-submit">🚀 Registrar IP</button>
+            <a href="/cgi-bin/tallafocs-configuracio.cgi" class="btn btn-back">⬅Tornar</a>
+            <button type="submit" class="btn btn-submit">Registrar IP</button>
         </div>
     </form>
 </div>

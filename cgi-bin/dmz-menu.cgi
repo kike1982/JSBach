@@ -14,10 +14,10 @@ cat << EOM
 </head>
 <body>
 <div class="menu-container">
-    <a href="/cgi-bin/dmz.cgi?comand=iniciar" target="body" class="menu-item"><span class="icon">🚀</span><span class="label">DMZ Iniciar</span></a>
-    <a href="/cgi-bin/dmz.cgi?comand=aturar" target="body" class="menu-item"><span class="icon">🛑</span><span class="label">DMZ Aturar</span></a>
-    <a href="/cgi-bin/dmz.cgi?comand=estat" target="body" class="menu-item"><span class="icon">📊</span><span class="label">DMZ Estat</span></a>
-    <a href="/cgi-bin/dmz-configurar.cgi" target="body" class="menu-item"><span class="icon">🛠️</span><span class="label">DMZ Configuració</span></a>
+    <a href="/cgi-bin/dmz.cgi?comand=iniciar" target="body" class="menu-item"><span class="icon"></span><span class="label">DMZ Iniciar</span></a>
+    <a href="/cgi-bin/dmz.cgi?comand=aturar" target="body" class="menu-item"><span class="icon"></span><span class="label">DMZ Aturar</span></a>
+    <a href="/cgi-bin/dmz.cgi?comand=estat" target="body" class="menu-item"><span class="icon"></span><span class="label">DMZ Estat</span></a>
+    <a href="/cgi-bin/dmz-configurar.cgi" target="body" class="menu-item"><span class="icon"></span><span class="label">DMZ Configuració</span></a>
 </div>
 </body>
 </html>

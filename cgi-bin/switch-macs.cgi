@@ -69,7 +69,7 @@ cat << EOM
 </head>
 <body>
 
-<h1>🛡️ Gestió de Bloquejos MAC</h1>
+<h1>Gestió de Bloquejos MAC</h1>
 
 EOM
 
@@ -81,12 +81,12 @@ cat << EOM
 <div class="actions-panel">
     <form method="POST" style="margin: 0;">
         <input type="hidden" name="action" value="bloquear">
-        <button type="submit" class="btn btn-danger">🔒 APLICAR BLOQUEJOS (Crear ACLs)</button>
+        <button type="submit" class="btn btn-danger">APLICAR BLOQUEJOS (Crear ACLs)</button>
     </form>
     
     <form method="POST" style="margin: 0;">
         <input type="hidden" name="action" value="desbloquear">
-        <button type="submit" class="btn btn-success">🔓 TREURE BLOQUEJOS (Esborrar ACLs)</button>
+        <button type="submit" class="btn btn-success">TREURE BLOQUEJOS (Esborrar ACLs)</button>
     </form>
 </div>
 
@@ -94,7 +94,7 @@ cat << EOM
 <form method="POST" style="background: #1e293b; padding: 20px; border-radius: 8px; display: flex; gap: 10px; align-items: center;">
     <input type="hidden" name="action" value="add_mac">
     <input type="text" name="mac" placeholder="Ex: 00:11:22:33:44:55" class="input-field" required pattern="^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$">
-    <button type="submit" class="btn">➕ Afegir a la Llista</button>
+    <button type="submit" class="btn">Afegir a la Llista</button>
 </form>
 
 <h3>Llista de MACs Bloquejades</h3>
@@ -117,7 +117,7 @@ if [ -f "$MACS_FILE" ]; then
         echo "<form method='POST' style='margin:0;'>"
         echo "<input type='hidden' name='action' value='del_mac'>"
         echo "<input type='hidden' name='mac' value='$line'>"
-        echo "<button type='submit' class='btn btn-danger' style='padding: 5px 10px; font-size: 0.8rem;'>🗑️ Eliminar</button>"
+        echo "<button type='submit' class='btn btn-danger' style='padding: 5px 10px; font-size: 0.8rem;'>Eliminar</button>"
         echo "</form>"
         echo "</td>"
         echo "</tr>"

@@ -20,10 +20,10 @@ EOM
 comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
 
 # Asignar Emoji según comando
-ICON="⚙️"
-[[ "$comand" == "iniciar" ]] && ICON="🚀"
-[[ "$comand" == "aturar" ]] && ICON="🛑"
-[[ "$comand" == "estat" ]] && ICON="📊"
+ICON=""
+[[ "$comand" == "iniciar" ]] && ICON=""
+[[ "$comand" == "aturar" ]] && ICON=""
+[[ "$comand" == "estat" ]] && ICON=""
 
 echo "<h2>$ICON Acció: $comand</h2>"
 echo "<div class='card'>"

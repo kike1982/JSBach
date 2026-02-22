@@ -74,13 +74,13 @@ function switches(){
   <tr>
     <td align="center">
       <!-- Botones de navegación -->
-      <button id="btn-home" onclick="home()" class="btn-active">🏠 INICIO</button>
-      <button id="btn-wan" onclick="wan()">🌐 WAN</button>
-      <button id="btn-enrutar" onclick="enrutar()">⚡ ENRUTAR</button>
-      <button id="btn-bridge" onclick="bridge()">🌉 BRIDGE</button>
-      <button id="btn-tallafocs" onclick="tallafocs()">🔥 TALLAFOCS</button>
-      <button id="btn-dmz" onclick="dmz()">🛡️ DMZ</button>
-      <button id="btn-switch" onclick="switches()">🔌 SWITCH</button>
+      <button id="btn-home" onclick="home()" class="btn-active">INICIO</button>
+      <button id="btn-wan" onclick="wan()">WAN</button>
+      <button id="btn-enrutar" onclick="enrutar()">ENRUTAR</button>
+      <button id="btn-bridge" onclick="bridge()">BRIDGE</button>
+      <button id="btn-tallafocs" onclick="tallafocs()">TALLAFOCS</button>
+      <button id="btn-dmz" onclick="dmz()">DMZ</button>
+      <button id="btn-switch" onclick="switches()">SWITCH</button>
     </td>    
   </tr>
 </table>

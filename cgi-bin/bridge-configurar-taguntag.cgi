@@ -28,7 +28,7 @@ cat << EOM
 </head>
 <body>
     <div class="container">
-        <h2>🏷️ Configuració Tag-Untag</h2>
+        <h2>Configuració Tag-Untag</h2>
         <div class="card">
             <table>
                 <tr><th>Interfaç</th><th>UNTAG</th><th>TAG</th><th>Accions</th></tr>
@@ -72,7 +72,7 @@ for iface in $(Interfaces_Ethernet); do
     echo "  <td><span class='iface-name'>$iface</span></td>"
     echo "  <td><span class='vlan-badge'>$VLAN_UNTAG</span></td>"
     echo "  <td><span class='vlan-badge'>$VLAN_TAG</span></td>"
-    echo "  <td><a href='/cgi-bin/bridge-modificar-taguntag.cgi?int=$iface' class='btn'>✏️ Modificar</a></td>"
+    echo "  <td><a href='/cgi-bin/bridge-modificar-taguntag.cgi?int=$iface' class='btn'>Modificar</a></td>"
     echo "</tr>"
 done
 

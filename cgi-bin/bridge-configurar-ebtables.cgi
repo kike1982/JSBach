@@ -39,7 +39,7 @@ cat << EOM
 </head>
 <body>
     <div class="container">
-        <h2>🛡️ Gestió d'Aïllament VLAN</h2>
+        <h2>Gestió d'Aïllament VLAN</h2>
         <div class="card">
             <table>
                 <thead>
@@ -63,13 +63,13 @@ while IFS=';' read -r NOM VID IP_MASC _ ; do
 
     # Determinem l'estat mirant si la línia VID:ISOLATED existeix a la sortida
     if echo "$ISOL_STATUS_RAW" | grep -q "^${VID}:ISOLATED"; then
-        ESTAT_TXT="<span class='badge badge-isolated'>🔒 AÏLLAT</span>"
-        BTN_TXT="🔓 Desaillar"
+        ESTAT_TXT="<span class='badge badge-isolated'>AÏLLAT</span>"
+        BTN_TXT="Desaillar"
         BTN_ACTION="desaillar"
         BTN_CLASS="btn-unisolate"
     else
-        ESTAT_TXT="<span class='badge badge-normal'>🔓 NORMAL</span>"
-        BTN_TXT="🔒 Aillar"
+        ESTAT_TXT="<span class='badge badge-normal'>NORMAL</span>"
+        BTN_TXT="Aillar"
         BTN_ACTION="aillar"
         BTN_CLASS="btn-isolate"
     fi

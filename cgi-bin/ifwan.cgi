@@ -25,11 +25,11 @@ badge_class="badge-dhcp"
 comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
 
 # Icono según comando
-icon="⚡"
+icon=""
 case "$comand" in
-    iniciar) icon="🚀" ;;
-    aturar)  icon="🛑" ;;
-    estat)   icon="📊" ;;
+    iniciar) icon="" ;;
+    aturar)  icon="" ;;
+    estat)   icon="" ;;
 esac
 
 echo '<div class="card">'
@@ -46,7 +46,7 @@ echo '</div>'
 if [[ "$comand" != "estat" ]]; then
     echo '<div class="card">'
     echo "  <div class='card-header'>"
-    echo "      <h3 class='card-title'>🔍 Estat actual</h3>"
+    echo "      <h3 class='card-title'>Estat actual</h3>"
     echo "      <span class='badge $badge_class'>$current_mode</span>"
     echo "  </div>"
     echo "  <div class='output-box'>"

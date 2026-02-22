@@ -36,7 +36,7 @@ protocol=$(urldecode "$protocol")
 port=$(urldecode "$port")
 
 echo "      <div class='card'>"
-echo "          <span class='icon'>🔌</span>"
+echo "          <span class='icon'></span>"
 echo "          <h2>Whitelist de Ports</h2>"
 echo "          <div class='info-grid'>"
 echo "              <div class='info-item'><span class='info-label'>Acció</span><span class='info-value'>$accio</span></div>"

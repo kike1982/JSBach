@@ -34,7 +34,7 @@ accio=$(urldecode "$accio")
 id=$(urldecode "$id")
 
 echo "      <div class='card'>"
-echo "          <span class='icon'>📥</span>"
+echo "          <span class='icon'></span>"
 echo "          <h2>Configuració d'INPUT</h2>"
 echo "          <div class='info-grid'>"
 echo "              <div class='info-item'><span class='info-label'>Acció</span><span class='info-value'>$accio</span></div>"

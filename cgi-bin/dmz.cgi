@@ -21,10 +21,10 @@ comand=$(echo "$QUERY_STRING" | sed -n 's/^.*comand=\([^&]*\).*$/\1/p')
 
 # Emojis según comanda
 case "$comand" in
-    iniciar) ICON="🚀";;
-    aturar)  ICON="🛑";;
-    estat)   ICON="📊";;
-    *)       ICON="⚙️";;
+    iniciar) ICON="";;
+    aturar)  ICON="";;
+    estat)   ICON="";;
+    *)       ICON="";;
 esac
 
 echo "<div class='card'>"
@@ -36,7 +36,7 @@ echo "  </div>"
 # Si no es 'estat', mostrar también el estado actual
 if [[ "$comand" != "estat" ]]; then
     estat_actual=$("$DIR"/"$PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli dmz estat)
-    echo "  <div class='status-badge'><span>🔍</span> Estat actual DMZ: $estat_actual</div>"
+    echo "  <div class='status-badge'><span></span> Estat actual DMZ: $estat_actual</div>"
 fi
 echo "</div>"
 

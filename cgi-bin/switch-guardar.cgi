@@ -46,8 +46,8 @@ if [ "$REQUEST_METHOD" = "POST" ]; then
             TYPE="success"
         else
             # Extreure l'error del backend
-            MSG=$(echo "$OUTPUT" | grep -oP '❌ ERROR: \K.*')
-            [ -z "$MSG" ] && MSG=$(echo "$OUTPUT" | grep -oP '⚠️ \K.*')
+            MSG=$(echo "$OUTPUT" | grep -oP 'ERROR: \K.*')
+            [ -z "$MSG" ] && MSG=$(echo "$OUTPUT" | grep -oP '\K.*')
             [ -z "$MSG" ] && MSG="Error desconegut al guardar el switch."
             TYPE="error"
         fi
@@ -68,7 +68,7 @@ cat << EOM
 EOM
 
 if [ "$TYPE" == "success" ]; then
-    echo "<h1>✅ $MSG</h1>"
+    echo "<h1>$MSG</h1>"
     echo "<div class='details'>"
     echo "<p><strong>Nom:</strong> $NOM</p>"
     echo "<p><strong>IP:</strong> $IP</p>"
@@ -77,7 +77,7 @@ if [ "$TYPE" == "success" ]; then
     echo "</div>"
     echo "<p>Redirigint en 3 segons...</p>"
 else
-    echo "<h1 class='error'>❌ Error</h1>"
+    echo "<h1 class='error'>Error</h1>"
     echo "<p>$MSG</p>"
     echo "<div class='details'><pre>$OUTPUT</pre></div>"
     echo "<p><a href='$SWITCH_CONFIG_CGI' class='btn'>Tornar a intentar</a></p>"

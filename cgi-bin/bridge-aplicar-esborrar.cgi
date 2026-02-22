@@ -36,12 +36,12 @@ RESULTADO="$($RUTA bridge configurar esborrar vlan "$vid")"
 
 if echo "$RESULTADO" | grep -qi "Error"; then
     echo "        <div class='card'>"
-    echo "            <span class='icon'>❌</span>"
+    echo "            <span class='icon'></span>"
     echo "            <h2>Error en l'eliminació</h2>"
     echo "            <div class='output-box error'>$RESULTADO</div>"
 else
     echo "        <div class='card'>"
-    echo "            <span class='icon'>🗑️</span>"
+    echo "            <span class='icon'></span>"
     echo "            <h2>VLAN eliminada correctament</h2>"
     echo "            <div class='output-box success'>VLAN amb VID $vid s'ha suprimit del sistema correctament.</div>"
 fi

@@ -29,11 +29,11 @@ if echo "$status_raw" | grep -qw "^ACTIVAT"; then
 fi
 
 # Icono según comando
-icon="⚡"
+icon=""
 case "$comand" in
-    iniciar) icon="🚀" ;;
-    aturar)  icon="🛑" ;;
-    estat)   icon="📊" ;;
+    iniciar) icon="" ;;
+    aturar)  icon="" ;;
+    estat)   icon="" ;;
 esac
 
 echo '<div class="card">'
@@ -50,7 +50,7 @@ echo '</div>'
 if [[ "$comand" != "estat" ]]; then
     echo '<div class="card">'
     echo "  <div class='card-header'>"
-    echo "      <h3 class='card-title'>🔍 Estat actual</h3>"
+    echo "      <h3 class='card-title'>Estat actual</h3>"
     echo "      <span class='badge $badge_class'>$badge_text</span>"
     echo "  </div>"
     echo "  <div class='output-box'>"

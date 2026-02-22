@@ -41,7 +41,7 @@ PROTO=$(get_param "proto" | xargs)
 IP_DMZ=$(get_param "ipdmz" | xargs)
 
 echo "      <div class='card'>"
-echo "          <span class='icon'>🗑️</span>"
+echo "          <span class='icon'></span>"
 echo "          <h2>Servei DMZ Eliminat</h2>"
 echo "          <div class='info-grid'>"
 echo "              <div class='info-item'><span class='info-label'>Port</span><span class='info-value'>$PORT</span></div>"

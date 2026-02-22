@@ -20,7 +20,7 @@ echo ""
 </head>
 <body>
     <div class="container">
-        <h2>💾 Guardant Configuració</h2>
+        <h2>Guardant Configuració</h2>
         <div style="text-align:center; margin-bottom:20px; color:#94a3b8;">
             Redirigint a l'estat en 3 segons...
         </div>
@@ -43,7 +43,7 @@ ordre="ifwan configurar $mode $int $ipmas $pe $dns"
 
 # --- Caja con los valores recibidos ---
 echo '<div class="card">'
-echo '  <div class="card-header"><h3 class="card-title">🔍 Valors Aplicats</h3></div>'
+echo '  <div class="card-header"><h3 class="card-title">Valors Aplicats</h3></div>'
 echo '  <table class="info-table">'
 echo "    <tr><th>Mode</th><td><span style='color:#3b82f6; text-transform:uppercase;'>$mode</span></td></tr>"
 echo "    <tr><th>Interfície</th><td>$int</td></tr>"
@@ -57,7 +57,7 @@ echo '</div>'
 
 # --- Caja con la salida del comando ---
 echo '<div class="card">'
-echo '  <div class="card-header"><h3 class="card-title">⚙️ Resultat del Sistema</h3></div>'
+echo '  <div class="card-header"><h3 class="card-title">Resultat del Sistema</h3></div>'
 echo '  <div class="output-box">'
 echo "$("$DIR"/"$PROJECTE"/"$DIR_SCRIPTS"/client_srv_cli $ordre)"
 echo '  </div>'
