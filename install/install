@@ -1,0 +1,144 @@
+#!/bin/bash
+set -e
+
+####################################
+### comprobar root
+####################################
+if [ "$EUID" -ne 0 ]; then
+  echo "Este script debe ejecutarse como root"
+  exit 1
+fi
+
+source /usr/local/JSBach/conf/variables.conf
+
+####################################
+### Funciones del primer script
+####################################
+
+fnc_copia_fitxers() {
+    ORIGEN="../"
+    DESTI="/usr/local"
+    NOM_CARPETA=JSBach
+    DESTI_FINAL="$DESTI/$NOM_CARPETA"
+
+    echo "📁 Copiando ficheros a $DESTI_FINAL..."
+
+    # Copiar carpeta JSBach
+    cp -r "$ORIGEN" "$DESTI_FINAL"
+
+    # Ajustar propietario root:root
+    chown -R root:root "$DESTI_FINAL"
+
+    echo "🔐 Ajustando permisos de $DESTI_FINAL"
+    chmod -R 755 "$DESTI_FINAL"
+}
+
+fnc_instala_aplicacions() {
+    echo "⚙️ Instalando aplicaciones necesarias..."
+    apt update
+
+    for paquete in net-tools iw apache2 curl expect; do
+        echo "⚙️ Instalando $paquete"
+        apt install -y "$paquete"
+    done
+
+    echo "⚙️ Activando módulo CGI de Apache"
+    a2enmod cgi
+
+    echo "📝 Creando configuración Apache para JSBach CGI"
+    cat > /etc/apache2/conf-available/jsbach-cgi.conf <<-'EOF'
+    ScriptAlias /cgi-bin/ /usr/local/JSBach/cgi-bin/
+
+    <Directory "/usr/local/JSBach/cgi-bin">
+        AllowOverride None
+        Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+        Require all granted
+        AddHandler cgi-script .cgi
+    </Directory>
+EOF
+
+    echo "✅ Activando configuración Apache"
+    a2enconf jsbach-cgi
+    systemctl restart apache2
+}
+
+####################################
+### desactivar NetworkManager
+####################################
+echo "Desactivando NetworkManager"
+systemctl stop NetworkManager || true
+systemctl disable NetworkManager || true
+echo
+
+####################################
+### Copiar ficheros e instalar apps
+####################################
+fnc_copia_fitxers
+fnc_instala_aplicacions
+
+####################################
+### configurar Apache CGI adicional (opcional)
+####################################
+# Aquí mantenemos tu configuración previa
+APACHE_CGI_CONF="/etc/apache2/conf-available/serve-cgi-bin.conf"
+cp "$APACHE_CGI_CONF" "${APACHE_CGI_CONF}.bak"
+
+cat > "$APACHE_CGI_CONF" << 'EOF'
+<IfModule mod_alias.c>
+	<IfModule mod_cgi.c>
+		Define ENABLE_USR_LIB_CGI_BIN
+	</IfModule>
+
+	<IfModule mod_cgid.c>
+		Define ENABLE_USR_LIB_CGI_BIN
+	</IfModule>
+
+	<IfDefine ENABLE_USR_LIB_CGI_BIN>
+		ScriptAlias /cgi-bin/ /usr/local/JSBach/cgi-bin/
+		<Directory "/usr/local/JSBach/cgi-bin">
+			AllowOverride None
+			Options +ExecCGI -MultiViews +SymLinksIfOwnerMatch
+			Require all granted
+		</Directory>
+	</IfDefine>
+</IfModule>
+EOF
+
+a2enconf serve-cgi-bin
+systemctl reload apache2
+
+####################################
+### crear servicio systemd
+####################################
+SERVICE_FILE="/etc/systemd/system/srv_cli.service"
+
+echo "Creando servicio systemd srv_cli"
+
+cat > "$SERVICE_FILE" << 'EOF'
+[Unit]
+Description=Servicio JSBach srv_cli
+After=network-pre.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/JSBach/system/srv_cli
+WorkingDirectory=/usr/local/JSBach/system/
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+chmod +x "$SERVICE_FILE"
+
+####################################
+### activar y arrancar servicio
+####################################
+systemctl daemon-reload
+systemctl enable srv_cli.service
+systemctl start srv_cli.service
+
+echo
+echo "Estado del servicio:"
+systemctl status srv_cli.service --no-pager

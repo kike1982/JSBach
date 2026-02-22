@@ -1,0 +1,321 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+source /usr/local/JSBach/scripts/aillar
+source $DIR/$PROJECTE/$DIR_SCRIPTS/validacions
+source $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
+
+######################################################################
+### Funció auxiliar: estat real del tallafocs
+######################################################################
+fnc_estat_raw()
+{
+    # Si existeix almenys una cadena de VLAN, considerem ACTIU
+    for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
+        nom=$(echo "$linia" | cut -d';' -f1)
+        if iptables -L "$nom" &>/dev/null; then
+            echo "$ACTIVAT"
+            return
+        fi
+    done
+    echo "$DESACTIVAT"
+}
+
+######################################################################
+### Funcions
+######################################################################
+
+fnc_iniciar()
+{
+    if [ "$(fnc_estat_raw)" == "$ACTIVAT" ]; then
+        echo "⚠️  El tallafocs ja està ACTIU"
+        return 0
+    fi
+
+    echo "🔥 Iniciant tallafocs..."
+
+    # Netegem estat anterior
+    fnc_aturar > /dev/null 2>&1
+
+    for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"); do
+        nom=$(echo "$linia" | cut -d';' -f1)
+        ip=$(echo "$linia" | cut -d';' -f3)
+
+        iptables -N "$nom"
+        iptables -A FORWARD -s "$ip" -j "$nom"
+        
+        iptables -N "INPUT_$nom"
+        iptables -A INPUT -s "$ip" -j "INPUT_$nom"
+    done
+
+    iptables -N ports_wls
+    for linia in $(grep -v '#' "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"); do
+        protocol=$(echo "$linia" | cut -d';' -f1)
+        num_port=$(echo "$linia" | cut -d';' -f2)
+        iptables -A ports_wls -p "$protocol" --dport "$num_port" -j ACCEPT
+    done
+    iptables -A ports_wls -j DROP
+
+    if [ -n "$IFW_IFWAN" ]; then
+        iptables -N WAN_INPUT
+        iptables -I INPUT -i "$IFW_IFWAN" -j WAN_INPUT
+    fi
+
+    echo "✅ Tallafocs activat correctament"
+}
+
+fnc_aturar()
+{
+    if [ "$(fnc_estat_raw)" == "$DESACTIVAT" ]; then
+        echo "⚠️  El tallafocs ja està DESACTIVAT"
+        return 0
+    fi
+
+    echo "🛑 Aturant tallafocs..."
+
+    # Neteja de regles i cadenes
+    iptables -F
+    iptables -X
+    
+    # Política per defecte SEGURA: bloquejar trànsit entre xarxes
+    iptables -P FORWARD DROP
+    
+    # Permetre accés al sistema (Input) i sortida (Output)
+    iptables -P INPUT ACCEPT
+    iptables -P OUTPUT ACCEPT
+
+    # Neteja de NAT (independentment de l'estat d'enrutar)
+    iptables -t nat -F
+    iptables -t nat -X
+
+    echo "✅ Tallafocs aturat (Mode Segur: Forwarding deshabilitat)"
+}
+
+fnc_configurar()
+{
+    echo "⚙️  Configuració del tallafocs"
+
+    ARG_1=$1
+    shift
+
+    case "$ARG_1" in
+      desconnectar)
+        linia=$(grep ";$1;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+        nom=$(echo "$linia" | cut -d';' -f1)
+        vid=$(echo "$linia" | cut -d';' -f2)
+
+        if [ -z "$nom" ]; then
+            echo "❌ Error: no existeix la VLAN $1"
+        else
+            iptables -F "$nom"
+            for ipwls in $(grep "^$vid;" "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"); do
+                ip=$(echo "$ipwls" | cut -d';' -f2)
+                mac=$(echo "$ipwls" | cut -d';' -f3)
+                iptables -A "$nom" -s "$ip" -m mac --mac-source "$mac" -j ACCEPT
+            done
+            iptables -A "$nom" -j DROP
+            echo "🔌 VLAN $vid desconnectada"
+        fi
+        ;;
+      connectar)
+        linia=$(grep ";$1;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+        nom=$(echo "$linia" | cut -d';' -f1)
+
+        if [ -z "$nom" ]; then
+            echo "❌ Error: no existeix la VLAN $1"
+        else
+            iptables -F "$nom"
+            echo "🔗 VLAN $1 connectada"
+        fi
+        ;;
+      connectar_port_wls)
+        linia=$(grep ";$1;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+        nom=$(echo "$linia" | cut -d';' -f1)
+        vid=$(echo "$linia" | cut -d';' -f2)
+
+        if [ -z "$nom" ]; then
+            echo "❌ Error: no existeix la VLAN $1"
+        else
+            iptables -F "$nom"
+            for ipwls in $(grep "^$vid;" "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"); do
+                ip=$(echo "$ipwls" | cut -d';' -f2)
+                mac=$(echo "$ipwls" | cut -d';' -f3)
+                iptables -A "$nom" -s "$ip" -m mac --mac-source "$mac" -j ACCEPT
+            done
+            iptables -A "$nom" -j ports_wls
+            echo "🔐 VLAN $vid amb ports WLS actius"
+        fi
+        ;;
+      afegir_port_wls)
+        # $1=protocol, $2=port
+        if ! validar_port "$2"; then
+            echo "❌ ERROR: El port ha de ser un número entre 0 i 65535"
+            exit 1
+        fi
+        echo "$1;$2;" >> "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"
+        echo "➕ Port WLS afegit"
+        ;;
+      eliminar_port_wls)
+        sed -i "/^$1;$2;$/d" "$DIR/$PROJECTE/$DIR_CONF/$PORTS_WLS"
+        echo "➖ Port WLS eliminat"
+        ;;
+      afegir_ip_wls)
+        # $1=vid, $2=ip, $3=mac
+        local vid=$1
+        local ip=$2
+        local mac=$3
+
+        # 1. Validar que la VLAN existeixi
+        if ! grep -q ";$vid;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"; then
+            echo "❌ ERROR: La VLAN amb VID $vid no existeix. Crea-la primer."
+            exit 1
+        fi
+
+        # 2. Validar format d'IP
+        if ! validar_ip "$ip"; then
+            echo "❌ ERROR: L'adreça IP $ip no és vàlida"
+            exit 1
+        fi
+
+        # 3. Validar format de MAC
+        if ! validar_mac "$mac"; then
+            echo "❌ ERROR: L'adreça MAC $mac no és vàlida (format XX:XX:XX:XX:XX:XX)"
+            exit 1
+        fi
+
+        echo "$vid;$ip;$mac;" >> "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"
+        echo "➕ IP WLS afegida"
+        ;;
+      eliminar_ip_wls)
+        sed -i "/^$1;$2;$3;$/d" "$DIR/$PROJECTE/$DIR_CONF/$IPS_WLS"
+        echo "➖ IP WLS eliminada"
+        ;;
+      aillar)
+        fnc_aillar_aplicar "$1"
+        ;;
+      desaillar)
+        fnc_aillar_revertir "$1"
+        ;;
+      input_connectar)
+        linia=$(grep ";$1;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+        nom=$(echo "$linia" | cut -d';' -f1)
+        if [ -n "$nom" ]; then 
+             iptables -F "INPUT_$nom"
+             echo "✅ Input Connectat per VLAN $1"
+        else
+             echo "❌ Error VLAN"
+        fi
+        ;;
+      input_desconnectar)
+        linia=$(grep ";$1;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+        nom=$(echo "$linia" | cut -d';' -f1)
+        if [ -n "$nom" ]; then
+             iptables -F "INPUT_$nom"
+             iptables -A "INPUT_$nom" -j DROP
+             echo "🚫 Input Desconnectat per VLAN $1"
+        else
+             echo "❌ Error VLAN"
+        fi
+        ;;
+      bloquejar_internet)
+        iptables -F WAN_INPUT
+        iptables -A WAN_INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+        iptables -A WAN_INPUT -p icmp -j DROP 
+        iptables -A WAN_INPUT -j DROP
+        echo "🔒 Internet Bloquejat (Input only)"
+        ;;
+      desbloquejar_internet)
+        iptables -F WAN_INPUT
+        echo "🌍 Internet Desbloquejat"
+        ;;
+      *)
+        echo "❌ Error: acció no vàlida"
+        ;;
+    esac
+}
+
+fnc_estat()
+{
+    if [ $# -eq 0 ]; then
+        echo "📊 Estat global del tallafocs"
+        iptables -nvL --line-numbers
+        echo
+        echo "📊 NAT"
+        iptables -t nat -nvL --line-numbers
+        exit 0
+    fi
+
+    linia=$(grep ";$1;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+    nom=$(echo "$linia" | cut -d';' -f1)
+
+    if [ -z "$nom" ]; then
+        echo "❌ Error: no existeix la VLAN $1"
+    else
+        if iptables -C "$nom" -j DROP 2>/dev/null; then
+            echo "DESCONNECTADA"
+        elif iptables -C "$nom" -j ports_wls 2>/dev/null; then
+            echo "CONNECTADA PORT WLS"
+        elif iptables -C "$nom" -m state --state NEW -j DROP 2>/dev/null || iptables -C "$nom" -m state --state ESTABLISHED,RELATED -j ACCEPT 2>/dev/null; then
+            echo "AILLADA"
+        else
+            echo "CONNECTADA"
+        fi
+    fi
+}
+
+fnc_estat_input()
+{
+    linia=$(grep ";$1;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+    nom=$(echo "$linia" | cut -d';' -f1)
+    if [ -z "$nom" ]; then 
+        echo "UNKNOWN"
+        return
+    fi
+    
+    # Empty chain (2 lines header) -> Allowed (CONNECTADA)
+    # Rules present (usually DROP) -> DESCONNECTADA
+    n_rules=$(iptables -L "INPUT_$nom" 2>/dev/null | wc -l)
+    if [ "$n_rules" -gt 2 ]; then
+        echo "DESCONNECTADA"
+    else
+        echo "CONNECTADA"
+    fi
+}
+
+fnc_estat_wan()
+{
+    if [ -z "$IFW_IFWAN" ]; then 
+         echo "NO_WAN"
+         return
+    fi
+    n_rules=$(iptables -L WAN_INPUT 2>/dev/null | wc -l)
+    if [ "$n_rules" -gt 2 ]; then
+        echo "BLOCKED"
+    else
+        echo "OPEN"
+    fi
+}
+
+######################################################################
+### MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, configurar ,estat]"
+
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+case "$OPCIO_1" in
+  iniciar)    fnc_iniciar "$@" ;;
+  aturar)     fnc_aturar "$@" ;;
+  configurar) fnc_configurar "$@" ;;
+  estat)      fnc_estat "$@" ;;
+  estat_input) fnc_estat_input "$@" ;;
+  estat_wan)   fnc_estat_wan "$@" ;;
+  *)          echo "$MSG" ;;
+esac

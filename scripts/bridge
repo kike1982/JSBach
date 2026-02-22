@@ -1,0 +1,475 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+source $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
+
+######################################################################
+### 🔒 Funciones para preservar permisos
+######################################################################
+
+guardar_permisos() {
+    local FILE="$1"
+    PERMS=$(stat -c %a "$FILE")
+    OWNER=$(stat -c %u "$FILE")
+    GROUP=$(stat -c %g "$FILE")
+}
+
+restaurar_permisos() {
+    local FILE="$1"
+    chown "$OWNER:$GROUP" "$FILE"
+    chmod "$PERMS" "$FILE"
+}
+
+######################################################################
+### Funcions
+######################################################################
+fnc_estat()
+{
+    # 1. Intentem obtenir detalls complets (requereix permisos/sudo o wrapper)
+    if ip link show br0 &>/dev/null; then
+        SLAVES=$(bridge link show | grep "master br0" || true)
+        if [ -n "$SLAVES" ]; then
+            echo "$ACTIVAT"
+            echo "🌐 Bridge br0 actiu amb les següents interfícies i VLANs:"
+            ip -4 -br a show dev br0
+            while IFS=';' read -r _ VLANID _ VLANIP _; do
+                [ -z "$VLANID" ] && continue
+                ip -4 -br a show dev br0.$VLANID
+            done < <(grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+            echo "📌 VLANs de les interfícies:"
+            bridge vlan show
+            echo "🛡️  Estat de l'aïllament (Ebtables):"
+            ebtables -L --Lc | grep "Chain ISOL_" || echo "Cap sub-chain d'aïllament activa"
+            ebtables -L FORWARD --Lc | grep "ISOL_" || echo "Cap regla d'aïllament aplicada en FORWARD"
+            return
+        fi
+    fi
+
+    # 2. Fallback: Si no podem llegir detalls (perms) o no trobem esclaus, però el fitxer de status existeix
+    if [ -f "/usr/local/JSBach/system/bridge.status" ]; then
+        echo "$ACTIVAT"
+        echo "🌐 Bridge actiu (Status File detected - Detalls no disponibles)"
+        # Intentem mostrar el mínim possible
+        ip -4 -br a show dev br0 2>/dev/null || true
+        return
+    fi
+
+    # 3. Si arribem aquí, està desactivat
+    echo "$DESACTIVAT"
+    echo "⚠️  br0 no existeix o sense interfícies"
+}
+
+fnc_aillar()
+{
+    local VLAN_ID=$1
+    local CHAIN_NAME="ISOL_VLAN_${VLAN_ID}"
+    
+    echo "Activant aïllament per la VLAN $VLAN_ID..."
+
+    # 1. Crear la cadena si no existeix
+    ebtables -N $CHAIN_NAME 2>/dev/null || ebtables -F $CHAIN_NAME
+    
+    # 2. Identificar interfícies que pertanyen a aquesta VLAN
+    # Llegim el fitxer bridge_if.conf per saber quines interfícies tenen aquesta VLAN
+    local IFACES=()
+    while IFS=';' read -r NOM_IF VLAN_UNTAG VLAN_TAG _; do
+        [ -z "$NOM_IF" ] && continue
+        # Si és UNTAGGED en aquesta VLAN
+        if [ "$VLAN_UNTAG" == "$VLAN_ID" ]; then
+            IFACES+=("$NOM_IF")
+        else
+            # Si és TAGGED en aquesta VLAN
+            IFS=',' read -ra TAGS <<< "$VLAN_TAG"
+            for VID in "${TAGS[@]}"; do
+                if [ "$VID" == "$VLAN_ID" ]; then
+                    IFACES+=("$NOM_IF")
+                    break
+                fi
+            done
+        fi
+    done < <(grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF")
+
+    if [ ${#IFACES[@]} -eq 0 ]; then
+        echo "⚠️  No s'han trobat interfícies configurades per a la VLAN $VLAN_ID"
+        return
+    fi
+    
+    echo "Interfícies detectades a la VLAN $VLAN_ID: ${IFACES[*]}"
+
+    # 3. Aplicar regles:
+    # Per a cada interfície de la llista, redirigir el tràfic a la cadena ISOLIT
+    for IF in "${IFACES[@]}"; do
+        # Evitar duplicats netejant primer
+        ebtables -D FORWARD -i "$IF" -j "$CHAIN_NAME" 2>/dev/null || true
+        ebtables -I FORWARD -i "$IF" -j "$CHAIN_NAME"
+    done
+
+    # 3.1. Aplicar regles específiques d'aïllament (Port Isolation)
+    # Permetre sortida només cap al bridge (router/uplink) i bloquejar la resta
+    while IFS=';' read -r NOM_IF VLAN_UNTAG VLAN_TAG _; do
+        [ -z "$NOM_IF" ] && continue
+        
+        local IS_TARGET=0
+        local IS_TAGGED=0
+        
+        if [ "$VLAN_UNTAG" == "$VLAN_ID" ]; then
+            IS_TARGET=1
+            IS_TAGGED=0
+        else
+            IFS=',' read -ra TAGS <<< "$VLAN_TAG"
+            for VID in "${TAGS[@]}"; do
+                if [ "$VID" == "$VLAN_ID" ]; then
+                    IS_TARGET=1
+                    IS_TAGGED=1
+                    break
+                fi
+            done
+        fi
+        
+        if [ "$IS_TARGET" -eq 1 ]; then
+             if [ "$IS_TAGGED" -eq 1 ]; then
+                 # Tagged Rule: match VLAN ID
+                 ebtables -A $CHAIN_NAME -i "$NOM_IF" -p 802_1Q --vlan-id "$VLAN_ID" ! -o "br0.$VLAN_ID" -j DROP
+             else
+                 # Untagged Rule: match interface only
+                 ebtables -A $CHAIN_NAME -i "$NOM_IF" ! -o "br0.$VLAN_ID" -j DROP
+             fi
+        fi
+    done < <(grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF")
+
+    # 3.2. Regles antigues (preservades per compatibilitat)
+    # Dins la cadena: Bloquejar tràfic cap a les altres interfícies de la MATEIXA llista
+    # (El tràfic cap a Internet/Uplink/Altres VLANs es permetrà per defecte en no fer match amb DROP)
+    for IF_IN in "${IFACES[@]}"; do
+        for IF_OUT in "${IFACES[@]}"; do
+            if [ "$IF_IN" != "$IF_OUT" ]; then
+                ebtables -A $CHAIN_NAME -i "$IF_IN" -o "$IF_OUT" -j DROP
+            fi
+        done
+    done
+    
+    # Opcionalment permetre explícitament uplink coneguts si calgués, però "DROP entre clients" ja permet la resta.
+    
+    echo "✅ Aïllament activat per VLAN $VLAN_ID"
+}
+
+fnc_desaillar()
+{
+    local VLAN_ID=$1
+    local CHAIN_NAME="ISOL_VLAN_${VLAN_ID}"
+    
+    echo "Desactivant aïllament per la VLAN $VLAN_ID..."
+
+    # Eliminar referències a la cadena en FORWARD
+    ebtables -L FORWARD --Lc | grep "$CHAIN_NAME" | while read -r line; do
+        # Extraiem la interfície si podem, o simplement esborrem totes les regles que salten a la cadena
+        # Mètode brut: llistar totes les interfícies de nou i intentar esborrar
+        true
+    done
+    
+    # Recalculem interfícies per fer el clean exacte (mateixa lògica que aillar)
+    while IFS=';' read -r NOM_IF VLAN_UNTAG VLAN_TAG _; do
+        [ -z "$NOM_IF" ] && continue
+        if [ "$VLAN_UNTAG" == "$VLAN_ID" ]; then
+            ebtables -D FORWARD -i "$NOM_IF" -j "$CHAIN_NAME" 2>/dev/null || true
+        else
+            IFS=',' read -ra TAGS <<< "$VLAN_TAG"
+            for VID in "${TAGS[@]}"; do
+                if [ "$VID" == "$VLAN_ID" ]; then
+                    ebtables -D FORWARD -i "$NOM_IF" -j "$CHAIN_NAME" 2>/dev/null || true
+                    break
+                fi
+            done
+        fi
+    done < <(grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF")
+
+    # Buidar i esborrar la cadena
+    ebtables -F $CHAIN_NAME 2>/dev/null || true
+    ebtables -X $CHAIN_NAME 2>/dev/null || true
+    
+    echo "✅ Aïllament desactivat per VLAN $VLAN_ID"
+}
+
+fnc_isol_status()
+{
+    # Comprovar estat per a cada VLAN i retornar format processable
+    # Format sortida: VLAN_ID:ISOLATED o VLAN_ID:NORMAL per línia
+    
+    while IFS=';' read -r _ VLANID _ _ ; do
+        [ -z "$VLANID" ] && continue
+        
+        CHAIN_NAME="ISOL_VLAN_${VLANID}"
+        # Comprovem si la cadena existeix a ebtables (sortida d'error si no existeix)
+        if ebtables -L "$CHAIN_NAME" >/dev/null 2>&1; then
+             echo "${VLANID}:ISOLATED"
+        else
+             echo "${VLANID}:NORMAL"
+        fi
+    done < <(grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+}
+
+fnc_iniciar()
+{
+    ESTAT=$(fnc_estat | head -n1)
+    if [[ "$ESTAT" == "$ACTIVAT" ]]; then
+        echo "⚠️  Ja està actiu"
+        return 0
+    fi
+
+    WAN_UP=$(ip link show "$IFW_IFWAN" 2>/dev/null | grep -q "state UP" && echo "1" || echo "0")
+    WAN_IP=$(ip -4 addr show dev "$IFW_IFWAN" | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -n1)
+
+    if [ "$WAN_UP" != "1" ] || [ -z "$WAN_IP" ]; then
+        echo "❌ No es pot activar el BRIDGE: la WAN ($IFW_IFWAN) no està activa"
+        return
+    fi
+
+    echo "✅ Iniciant el bridge..."
+
+    if ! ip link show br0 &>/dev/null; then
+        ip link add name br0 type bridge vlan_filtering 1
+    fi
+    ip link set br0 up
+
+    while IFS=';' read -r _ VLANID _ VLANIP _; do
+        [ -z "$VLANID" ] && continue
+        ip link show br0.$VLANID &>/dev/null || ip link add link br0 name br0.$VLANID type vlan id $VLANID
+        ip link set br0.$VLANID up
+        ip addr add $VLANIP dev br0.$VLANID
+    done < <(grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+
+    while IFS=';' read -r NOM_IF VLAN_UNTAG VLAN_TAG _; do
+        [ -z "$NOM_IF" ] && continue
+        ip link set $NOM_IF master br0
+        ip link set $NOM_IF up
+        bridge vlan del dev $NOM_IF vid 1 pvid untagged
+
+        [ -n "$VLAN_UNTAG" ] && {
+            bridge vlan add dev $NOM_IF vid $VLAN_UNTAG pvid untagged
+            bridge vlan add dev br0 vid $VLAN_UNTAG self
+        }
+
+        if [ -n "$VLAN_TAG" ]; then
+            IFS=',' read -ra TAGS <<< "$VLAN_TAG"
+            for VID in "${TAGS[@]}"; do
+                bridge vlan add dev $NOM_IF vid $VID
+                bridge vlan add dev br0 vid $VID self
+            done
+        fi
+    done < <(grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF")
+
+    echo "✅ Bridge iniciat correctament"
+    touch "/usr/local/JSBach/system/bridge.status"
+}
+
+fnc_aturar()
+{
+    ESTAT=$(fnc_estat | head -n1)
+    [[ "$ESTAT" == "$DESACTIVAT" ]] && echo "⚠️  Ja està desactivat" && return
+    echo "🛑 Aturant bridge..."
+    ip link del dev br0
+    echo "✅ Bridge aturat correctament"
+    rm -f "/usr/local/JSBach/system/bridge.status"
+}
+
+source $DIR/$PROJECTE/$DIR_SCRIPTS/validacions
+
+fnc_configurar()
+{
+    ARG_1=$1; shift
+
+    case "$ARG_1" in
+    mostrar)
+        [ "$1" == "vlan" ] && grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+        [ "$1" == "bridge" ] && {
+            while IFS=';' read -r iface rest; do
+                [[ "$iface" =~ ^#|^$ ]] && continue
+                if [ -d "/sys/class/net/$iface" ]; then
+                    echo "$iface;$rest"
+                fi
+            done < "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"
+        }
+        ;;
+    guardar)
+        OPCIO_2=$1; shift
+        case "$OPCIO_2" in
+        vlan)
+            # $1=nom, $2=vid, $3=ipmasc, $4=ippe
+            local nom=$1
+            local vid=$2
+            local ipmasc=$3
+            local ippe=$4
+
+            # 1. Validar patrón del nombre
+            if [[ ! $nom =~ ^vlan_ ]]; then
+                echo "❌ ERROR: El nombre de la VLAN debe empezar por 'vlan_'"
+                exit 1
+            fi
+
+            # 2. Validar que el VID es numérico
+            if [[ ! $vid =~ ^[0-9]+$ ]]; then
+                echo "❌ ERROR: El VID de la VLAN debe ser un número"
+                exit 1
+            fi
+
+            # 3. Validar formato de red (IP/Máscara) y Gateway
+            local ip_net=$(echo "$ipmasc" | cut -d'/' -f1)
+            local mask=$(echo "$ipmasc" | cut -d'/' -f2)
+            local ip_gw=$(echo "$ippe" | cut -d'/' -f1)
+
+            if ! validar_ip "$ip_net"; then echo "❌ ERROR: IP de red no válida ($ip_net)"; exit 1; fi
+            if ! validar_mascara "$mask"; then echo "❌ ERROR: Máscara no válida ($mask)"; exit 1; fi
+            if ! validar_ip "$ip_gw"; then echo "❌ ERROR: IP de puerta de enlace no válida ($ip_gw)"; exit 1; fi
+
+            # 4. Validar coherencia de red entre IP/Masc y Gateway
+            if ! validar_misma_red "$ipmasc" "$mask" "$ippe"; then
+                echo "❌ ERROR: La IP ($ip_net) y la puerta de enlace ($ip_gw) deben estar en la misma red (máscara $mask)"
+                exit 1
+            fi
+
+            guardar_permisos "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+            TMP_FILE=$(mktemp)
+            local trobat=0
+
+            while IFS= read -r LINEA || [ -n "$LINEA" ]; do
+                [[ "$LINEA" =~ ^#|^$ ]] && echo "$LINEA" >> "$TMP_FILE" && continue
+                VID_LINEA=$(echo "$LINEA" | cut -d';' -f2)
+                if [ "$VID_LINEA" == "$vid" ]; then
+                    echo "$nom;$vid;$ipmasc;$ippe;" >> "$TMP_FILE"
+                    trobat=1
+                else
+                    echo "$LINEA" >> "$TMP_FILE"
+                fi
+            done < "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+
+            # 3. Si no s'ha trobat el VID, l'afegim al final (si el VID ja existia haurà estat 'trobat')
+            if [ "$trobat" -eq 0 ]; then
+                 echo "$nom;$vid;$ipmasc;$ippe;" >> "$TMP_FILE"
+            fi
+
+            mv "$TMP_FILE" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+            restaurar_permisos "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+            echo "Configuració de la VLAN $nom ($vid) guardada correctament"
+            ;;
+        bridge)
+            # $1=IFACE, $2=UNTAG, $3=TAGGED
+            local iface=$1
+            local untag=$2
+            local tagged=$3
+
+            # Obtener lista de VIDs válidos desde bridge.conf (ignorando comentarios y líneas vacías)
+            local vids_validos=$(grep -v '^#' "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF" | cut -d';' -f2 | xargs)
+            vids_validos="0 $vids_validos" # Añadimos 0 como valor permitido (sin vlan)
+
+            # Validar Untagged
+            local trobat_untag=0
+            for vid in $vids_validos; do
+                if [ "$untag" == "$vid" ]; then trobat_untag=1; break; fi
+            done
+
+            if [ "$trobat_untag" -eq 0 ]; then
+                echo "❌ ERROR: La VLAN Untagged $untag no existeix. Crea-la primer."
+                exit 1
+            fi
+
+            # Validar Tagged (lista separada por comas), soportando rangos (ej: 1-4),
+            # pero SIN modificar el formato original introducido por el usuario.
+            if [ "$tagged" != "0" ] && [ -n "$tagged" ]; then
+                IFS=',' read -ra TAGS <<< "$tagged"
+                for tvid_raw in "${TAGS[@]}"; do
+                    # Expandir rangos X-Y solo para validar, no para guardar
+                    if [[ "$tvid_raw" =~ ^([0-9]+)-([0-9]+)$ ]]; then
+                        local start="${BASH_REMATCH[1]}"
+                        local end="${BASH_REMATCH[2]}"
+                        if [ "$start" -gt "$end" ]; then
+                           echo "❌ ERROR: Rango inválido $tvid_raw (inicio > fin)"
+                           exit 1
+                        fi
+                        for ((i=start; i<=end; i++)); do
+                            local trobat_tag=0
+                            for vid in $vids_validos; do
+                                if [ "$i" == "$vid" ]; then trobat_tag=1; break; fi
+                            done
+                            if [ "$trobat_tag" -eq 0 ]; then
+                                echo "❌ ERROR: La VLAN Tagged $i (en rango $tvid_raw) no existeix. Crea-la primer."
+                                exit 1
+                            fi
+                        done
+                    else
+                        # Validar single ID
+                        if [[ ! "$tvid_raw" =~ ^[0-9]+$ ]]; then
+                             echo "❌ ERROR: ID de VLAN inválido: $tvid_raw"
+                             exit 1
+                        fi
+                        local trobat_tag=0
+                        for vid in $vids_validos; do
+                            if [ "$tvid_raw" == "$vid" ]; then trobat_tag=1; break; fi
+                        done
+                        if [ "$trobat_tag" -eq 0 ]; then
+                            echo "❌ ERROR: La VLAN Tagged $tvid_raw no existeix. Crea-la primer."
+                            exit 1
+                        fi
+                    fi
+                done
+            fi
+
+            guardar_permisos "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"
+            TMP_FILE=$(mktemp)
+            grep -v "^$iface;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF" > "$TMP_FILE"
+            echo "$iface;$untag;$tagged;" >> "$TMP_FILE"
+            mv "$TMP_FILE" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"
+            restaurar_permisos "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_IF"
+            echo "Mapeig de la interfície $iface actualitzat correctament"
+            ;;
+        esac
+        ;;
+    esborrar)
+        guardar_permisos "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+        TMP_FILE=$(mktemp)
+        grep -v ";$2;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF" > "$TMP_FILE"
+        mv "$TMP_FILE" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+        restaurar_permisos "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF"
+        ;;
+    esac
+}
+
+######################################################################
+### MAIN
+######################################################################
+
+MSG="Falta [iniciar, aturar, configurar, estat]"
+
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar $@
+    ;;
+  aturar)
+    fnc_aturar $@
+    ;;
+  configurar)
+    fnc_configurar $@
+    ;;
+  estat)
+    fnc_estat $@
+    ;;
+  aillar)
+    fnc_aillar $@
+    ;;
+  desaillar)
+    fnc_desaillar $@
+    ;;
+  isol_status)
+    fnc_isol_status $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac

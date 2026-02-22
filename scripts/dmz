@@ -1,0 +1,201 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+source $DIR/$PROJECTE/$DIR_SCRIPTS/validacions
+
+######################################################################
+###  Funcions
+######################################################################
+
+fnc_carregar_ifwan()
+{
+  source "$DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN"
+}
+
+fnc_iniciar()
+{
+  ESTAT_ACTUAL=$(fnc_estat)
+  if [ "$ESTAT_ACTUAL" = "$ACTIVAT" ]; then
+    echo "⚠️ DMZ ja està actiu"
+    return 0
+  fi
+
+  fnc_carregar_ifwan
+  
+  while IFS=';' read -r PORT_INICIAR PROTO_INICIAR IPDMZ_INICIAR; do
+    [[ -z "$PORT_INICIAR" || "$PORT_INICIAR" =~ ^# ]] && continue
+    
+    iptables -t nat -A PREROUTING \
+      -i "$IFW_IFWAN" \
+      -p "$PROTO_INICIAR" \
+      --dport "$PORT_INICIAR" \
+      -j DNAT --to-destination "$IPDMZ_INICIAR:$PORT_INICIAR"
+
+  done < "$DIR/$PROJECTE/$DIR_CONF/$DMZ_CONF"
+
+  echo "✅ DMZ activat"
+}
+
+fnc_aturar()
+{
+  ESTAT_ACTUAL=$(fnc_estat)
+  if [ "$ESTAT_ACTUAL" = "$DESACTIVAT" ]; then
+        echo "⚠️ DMZ ja està desactivat"
+        return 0
+  fi
+
+  echo "🛑 Aturant DMZ"
+  fnc_carregar_ifwan
+
+  while IFS=';' read -r PORT_ATURAR PROTO_ATURAR IPDMZ_ATURAR; do
+    [[ -z "$PORT_ATURAR" || "$PORT_ATURAR" =~ ^# ]] && continue
+
+    iptables -t nat -D PREROUTING \
+      -i "$IFW_IFWAN" \
+      -p "$PROTO_ATURAR" \
+      --dport "$PORT_ATURAR" \
+      -j DNAT --to-destination "$IPDMZ_ATURAR:$PORT_ATURAR"
+
+  done < "$DIR/$PROJECTE/$DIR_CONF/$DMZ_CONF"
+
+  echo "✅ DMZ desactivat"
+}
+
+fnc_configurar()
+{
+  ACCIO=$1
+  PORT=$2
+  PROTO=$3
+  IPDMZ=$4
+
+  FITXER="$DIR/$PROJECTE/$DIR_CONF/$DMZ_CONF"
+  
+  case "$ACCIO" in
+    afegir)
+      if [ -z "$PORT" ] || [ -z "$PROTO" ] || [ -z "$IPDMZ" ]; then
+        echo "❌ Ús: configurar afegir <port> <tcp|udp> <ip>"
+        return 1
+      fi
+
+      # 1. Validar port (0-65535)
+      if ! validar_port "$PORT"; then
+        echo "❌ Port invàlid (0-65535)"
+        return 1
+      fi
+
+      # 2. Validar protocol
+      if ! [[ "$PROTO" =~ ^(tcp|udp)$ ]]; then
+        echo "❌ Protocol invàlid, només tcp o udp"
+        return 1
+      fi
+
+      # 3. Validar IP
+      if ! validar_ip "$IPDMZ"; then
+        echo "❌ IP invàlida ($IPDMZ)"
+        return 1
+      fi
+
+      if grep -q "^$PORT;$PROTO;$IPDMZ$" "$FITXER"; then
+        echo "⚠️ La regla ja existeix"
+        return 0
+      fi
+      
+      ESTAT_ACTUAL=$(fnc_estat)
+      fnc_aturar
+
+      echo "$PORT;$PROTO;$IPDMZ" >> "$FITXER"
+      echo "✅ Regla afegida: $PORT $PROTO -> $IPDMZ"
+
+      if [ "$ESTAT_ACTUAL" == "$ACTIVAT" ]; then
+          fnc_iniciar
+      fi
+      ;;
+    eliminar)
+      if [ -z "$PORT" ] || [ -z "$PROTO" ] || [ -z "$IPDMZ" ]; then
+        echo "❌ Ús: configurar eliminar <port> <tcp|udp> <ip>"
+        return 1
+      fi
+
+      if ! grep -q "^$PORT;$PROTO;$IPDMZ$" "$FITXER"; then
+        echo "⚠️ La regla no existeix"
+        return 0
+      fi
+
+      ESTAT_ACTUAL=$(fnc_estat)
+      fnc_aturar
+
+      sed -i "\|^$PORT;$PROTO;$IPDMZ$|d" "$FITXER"
+      echo "✅ Regla eliminada: $PORT $PROTO -> $IPDMZ"
+
+      if [ "$ESTAT_ACTUAL" == "$ACTIVAT" ]; then
+          fnc_iniciar
+      fi
+      ;;
+    mostrar)
+      echo "Port ; Protocol ; IP Servidor"
+      grep -v '^#' "$FITXER" | grep -v '^$' | awk -F';' '{printf "%-6s ; %-8s ; %s\n",$1,$2,$3}'
+      ;;
+    *)
+      echo "Opcions vàlides:"
+      echo "  configurar afegir <port> <tcp|udp> <ip>"
+      echo "  configurar eliminar <port> <tcp|udp> <ip>"
+      echo "  configurar mostrar"
+      return 1
+      ;;
+  esac
+}
+
+fnc_estat()
+{
+  fnc_carregar_ifwan
+  ESTAT="$ACTIVAT"
+
+  while IFS=';' read -r PORT PROTO IPDMZ; do
+    [[ -z "$PORT" || "$PORT" =~ ^# ]] && continue
+
+    iptables -t nat -C PREROUTING \
+      -i "$IFW_IFWAN" \
+      -p "$PROTO" \
+      --dport "$PORT" \
+      -j DNAT --to-destination "$IPDMZ:$PORT" 2>/dev/null
+
+    if [ $? -ne 0 ]; then
+      ESTAT="$DESACTIVAT"
+      break
+    fi
+  done < "$DIR/$PROJECTE/$DIR_CONF/$DMZ_CONF"
+
+  echo "$ESTAT"
+}
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, configurar ,estat]"
+
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar $@
+    ;;
+  aturar)
+    fnc_aturar $@
+    ;; 
+  configurar) 
+    fnc_configurar $@
+    ;;
+  estat) 
+    fnc_estat $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac
