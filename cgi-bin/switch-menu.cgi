@@ -9,50 +9,8 @@ cat << EOF
 <!DOCTYPE html>
 <html lang="ca">
 <head>
+    <link rel="stylesheet" href="/cgi-bin/style.cgi">
 <meta charset="utf-8">
-<style>
-body {
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  margin: 0;
-  padding: 20px;
-  background: #0f172a;
-  color: #e2e8f0;
-  min-height: 100vh;
-}
-
-h2 {
-  font-size: 0.8rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  color: #475569;
-  margin-bottom: 20px;
-  padding-left: 10px;
-}
-
-a {
-  display: block;
-  text-decoration: none;
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  color: #94a3b8;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 1px solid transparent;
-}
-
-a:hover {
-  background: rgba(59, 130, 246, 0.1);
-  border-color: rgba(59, 130, 246, 0.3);
-  transform: translateX(4px);
-  color: #60a5fa;
-}
-
-.icon { margin-right: 10px; }
-</style>
 </head>
 <body>
   <h2>Mòdul Switch</h2>

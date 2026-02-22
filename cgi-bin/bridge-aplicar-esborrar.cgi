@@ -15,65 +15,9 @@ cat << EOM
 <!DOCTYPE html>
 <html lang="ca">
 <head>
+    <link rel="stylesheet" href="/cgi-bin/style.cgi">
     <meta charset="utf-8">
     <title>Resultat Operació</title>
-    <style>
-        /* --- Estil Modern Dark --- */
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: #0f172a;
-            color: #f8fafc;
-            margin: 0;
-            padding: 24px;
-            line-height: 1.6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 700px;
-            width: 100%;
-        }
-        h2 {
-            text-align: center;
-            color: #f8fafc;
-            margin-bottom: 30px;
-            font-weight: 800;
-        }
-        .card {
-            background: #1e293b;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 32px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-            text-align: center;
-        }
-        .output-box {
-            background: #0f172a;
-            border-radius: 8px;
-            padding: 20px;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.9rem;
-            color: #e2e8f0;
-            white-space: pre-wrap;
-            border-left: 4px solid #ef4444;
-            text-align: left;
-            margin-top: 20px;
-        }
-        .redirect-text {
-            margin-top: 20px;
-            color: #94a3b8;
-            font-size: 0.9rem;
-        }
-        .icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            display: block;
-        }
-        .success { border-left-color: #10b981; }
-        .error { border-left-color: #ef4444; }
-    </style>
     <script>
         setTimeout(() => {
             window.location.href = '/cgi-bin/bridge-configurar.cgi';

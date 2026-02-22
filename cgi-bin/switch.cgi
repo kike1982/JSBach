@@ -34,32 +34,9 @@ print_header() {
 <!DOCTYPE html>
 <html lang="ca">
 <head>
+    <link rel="stylesheet" href="/cgi-bin/style.cgi">
     <meta charset="utf-8">
     <title>Gestió de Switches - JSBach</title>
-    <style>
-        :root { --bg: #0f172a; --card-bg: rgba(30, 41, 59, 0.7); --text: #e2e8f0; --primary: #3b82f6; --success: #10b981; --error: #ef4444; --border: rgba(255, 255, 255, 0.1); }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); padding: 2rem; margin: 0; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .card { background: var(--card-bg); backdrop-filter: blur(10px); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 2rem; }
-        h1 { color: var(--primary); font-size: 1.5rem; }
-        h2 { font-size: 1.1rem; color: #94a3b8; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
-        .btn { padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; font-weight: 600; font-size: 0.85rem; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; }
-        .btn-primary { background: var(--primary); color: white; }
-        .btn-success { background: var(--success); color: white; }
-        .btn-error { background: var(--error); color: white; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
-        th { text-align: left; color: #94a3b8; font-size: 0.8rem; padding: 0.5rem; border-bottom: 2px solid var(--border); }
-        td { padding: 0.5rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
-        .status-badge { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; }
-        .status-active { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-        .status-down { background: rgba(239, 68, 68, 0.2); color: #f87171; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-        .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
-        label { font-size: 0.8rem; color: #94a3b8; }
-        input, select { background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border); border-radius: 4px; padding: 0.5rem; color: white; }
-        pre { background: #000; color: #34d399; padding: 1rem; border-radius: 6px; font-size: 0.8rem; overflow-x: auto; }
-        .mac-item { display: flex; justify-content: space-between; padding: 0.4rem; background: rgba(255,255,255,0.03); border-radius: 4px; margin-bottom: 0.3rem; }
-    </style>
 </head>
 <body><div class="container">
 EOF

@@ -30,27 +30,8 @@ cat << EOM
 <!DOCTYPE html>
 <html lang="ca">
 <head>
+    <link rel="stylesheet" href="/cgi-bin/style.cgi">
 <meta charset="UTF-8">
-<style>
-body { background: #0f172a; font-family: 'Inter', sans-serif; color: #f8fafc; padding: 20px; }
-h1 { color: #f59e0b; border-bottom: 2px solid #334155; padding-bottom: 10px; }
-.btn { background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; }
-.btn:hover { background: #2563eb; }
-.btn-danger { background: #ef4444; }
-.btn-danger:hover { background: #dc2626; }
-.btn-success { background: #10b981; }
-.btn-success:hover { background: #059669; }
-.input-group { margin-bottom: 15px; }
-label { display: block; margin-bottom: 5px; color: #94a3b8; font-size: 0.9rem; }
-input, select { padding: 10px; border-radius: 6px; border: 1px solid #475569; background: #1e293b; color: white; width: 100%; box-sizing: border-box; }
-.form-card { background: #1e293b; padding: 25px; border-radius: 12px; border: 1px solid #334155; max-width: 500px; margin-bottom: 30px; }
-table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #1e293b; border-radius: 8px; }
-th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
-th { background: #0f172a; color: #94a3b8; }
-.msg { padding: 15px; margin-bottom: 20px; border-radius: 6px; }
-.msg-success { background: #064e3b; color: #6ee7b7; border: 1px solid #059669; }
-.msg-error { background: #450a0a; color: #fca5a5; border: 1px solid #dc2626; }
-</style>
 </head>
 <body>
 

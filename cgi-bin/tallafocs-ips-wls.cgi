@@ -14,78 +14,9 @@ cat << EOM
 <!DOCTYPE html>
 <html lang="ca">
 <head>
+    <link rel="stylesheet" href="/cgi-bin/style.cgi">
     <meta charset="utf-8">
     <title>Resultat Operació IP WLS</title>
-    <style>
-        /* --- Estil Modern Dark --- */
-        body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
-            background: #0f172a;
-            color: #f8fafc;
-            margin: 0;
-            padding: 24px;
-            line-height: 1.6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 800px;
-            width: 100%;
-        }
-        h2 {
-            text-align: center;
-            color: #f8fafc;
-            margin-bottom: 30px;
-            font-weight: 800;
-        }
-        .card {
-            background: #1e293b;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px;
-            padding: 32px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-            text-align: center;
-        }
-        .output-box {
-            background: #0f172a;
-            border-radius: 8px;
-            padding: 20px;
-            font-family: 'Fira Code', monospace;
-            font-size: 0.9rem;
-            color: #e2e8f0;
-            white-space: pre-wrap;
-            border-left: 4px solid #10b981;
-            text-align: left;
-            margin-top: 20px;
-        }
-        .redirect-text {
-            margin-top: 20px;
-            color: #94a3b8;
-            font-size: 0.85rem;
-        }
-        .icon {
-            font-size: 4rem;
-            margin-bottom: 20px;
-            display: block;
-        }
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 15px;
-            margin-top: 20px;
-            text-align: left;
-            font-size: 0.9rem;
-        }
-        .info-item {
-            background: rgba(255,255,255,0.05);
-            padding: 10px;
-            border-radius: 6px;
-        }
-        .info-label { color: #64748b; font-weight: 600; display: block; margin-bottom: 4px; }
-        .info-value { color: #10b981; font-weight: 700; }
-    </style>
     <script>
         setTimeout(() => {
             window.location.href = '/cgi-bin/tallafocs-configuracio.cgi';

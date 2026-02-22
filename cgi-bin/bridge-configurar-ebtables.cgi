@@ -33,90 +33,9 @@ cat << EOM
 <!DOCTYPE html>
 <html lang="ca">
 <head>
+    <link rel="stylesheet" href="/cgi-bin/style.cgi">
 <meta charset="utf-8">
 <title>Aïllament VLAN</title>
-<style>
-/* --- Estil Modern Dark --- */
-body {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-    background: #0f172a;
-    color: #f8fafc;
-    margin: 0;
-    padding: 24px;
-    line-height: 1.6;
-}
-.container {
-    max-width: 900px;
-    margin: 0 auto;
-}
-h2 {
-    color: #3b82f6;
-    margin-top: 20px;
-    margin-bottom: 30px;
-    font-size: 1.5rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-left: 4px solid #3b82f6;
-    padding-left: 15px;
-}
-.card {
-    background: #1e293b;
-    border: 1px solid rgba(255,255,255,0.1);
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-}
-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin: 10px 0;
-}
-th {
-    text-align: left;
-    color: #64748b;
-    padding: 12px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    font-size: 0.85rem;
-    text-transform: uppercase;
-}
-td {
-    padding: 16px 14px;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-    color: #f1f5f9;
-}
-.badge {
-    padding: 4px 10px;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 800;
-    text-transform: uppercase;
-}
-.badge-isolated { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
-.badge-normal { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-
-.btn {
-    padding: 8px 14px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.85rem;
-    transition: all 0.2s;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-.btn-isolate { background: #ef4444; color: white; }
-.btn-isolate:hover { background: #dc2626; transform: translateY(-1px); }
-.btn-unisolate { background: #10b981; color: white; }
-.btn-unisolate:hover { background: #059669; transform: translateY(-1px); }
-
-.vlan-name { font-weight: 700; color: #3b82f6; }
-.vlan-vid { font-family: monospace; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; }
-</style>
 </head>
 <body>
     <div class="container">

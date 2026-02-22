@@ -58,17 +58,9 @@ cat << EOM
 <!DOCTYPE html>
 <html lang="ca">
 <head>
+    <link rel="stylesheet" href="/cgi-bin/style.cgi">
 <meta charset="UTF-8">
 <meta http-equiv="refresh" content="3;url=$SWITCH_CONFIG_CGI">
-<style>
-body { background: #0f172a; font-family: 'Inter', sans-serif; color: #f8fafc; padding: 40px; text-align: center; }
-.card { background: #1e293b; padding: 40px; border-radius: 12px; border: 1px solid #334155; max-width: 600px; margin: 0 auto; }
-h1 { color: #10b981; margin-top: 0; }
-.error { color: #ef4444; }
-.details { text-align: left; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 8px; margin-top: 20px; }
-.btn { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; text-decoration: none; display: inline-block; margin-top: 20px; }
-.btn:hover { background: #2563eb; }
-</style>
 </head>
 <body>
 

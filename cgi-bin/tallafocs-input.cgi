@@ -9,86 +9,9 @@ cat << EOM
 <!DOCTYPE html>
 <html lang="ca">
 <head>
+    <link rel="stylesheet" href="/cgi-bin/style.cgi">
   <meta charset="utf-8">
   <title>Tallafocs Configuració Input</title>
-  <style>
-    /* --- Estil Modern Dark --- */
-    body {
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
-        background: #0f172a;
-        color: #f8fafc;
-        margin: 0;
-        padding: 24px;
-        line-height: 1.6;
-    }
-    .container {
-        max-width: 900px;
-        margin: 0 auto;
-    }
-    h2, h3 {
-        color: #3b82f6;
-        margin-bottom: 24px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    h3 {
-        font-size: 1.25rem;
-        border-left: 4px solid #3b82f6;
-        padding-left: 15px;
-        margin-top: 40px;
-    }
-    .card {
-        background: #1e293b;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-    }
-    .status-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 20px;
-        flex-wrap: wrap;
-    }
-    .info-group {
-        display: flex;
-        flex-direction: column;
-    }
-    .label { font-weight: 700; color: #f8fafc; font-size: 1.1rem; }
-    .sublabel { font-family: 'Fira Code', monospace; color: #94a3b8; font-size: 0.85rem; }
-    
-    .badge {
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-size: 0.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-    }
-    .badge-open { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
-    .badge-blocked { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
-
-    .btn {
-        padding: 8px 14px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 700;
-        font-size: 0.8rem;
-        transition: all 0.2s;
-        text-transform: uppercase;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-    .btn-connect { background: #10b981; color: white; }
-    .btn-connect:hover { background: #059669; transform: translateY(-1px); }
-    .btn-disconnect { background: #ef4444; color: white; }
-    .btn-disconnect:hover { background: #dc2626; transform: translateY(-1px); }
-  </style>
 </head>
 <body>
 <div class="container">
