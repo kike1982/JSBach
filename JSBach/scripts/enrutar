@@ -1,0 +1,95 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+source $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
+
+######################################################################
+###  Funcions
+######################################################################
+
+fnc_estat_raw()
+{
+    # Devuelve solo ACTIVAT o DESACTIVAT
+    if [ "$(cat /proc/sys/net/ipv4/ip_forward)" -eq 1 ] && iptables -t nat -C POSTROUTING -o "$IFW_IFWAN" -j MASQUERADE 2>/dev/null; then
+        echo "$ACTIVAT"
+    else
+        echo "$DESACTIVAT"
+    fi
+}
+
+fnc_estat()
+{
+    # Muestra información completa
+    local estat=$(fnc_estat_raw)
+    if [ "$estat" == "$ACTIVAT" ]; then
+        ip_info=$(ip -4 addr show dev $IFW_IFWAN | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -n1)
+        ip_info="${ip_info:-No assignada}"
+        echo "$ACTIVAT - La NAT està activa a la interfície $IFW_IFWAN amb IP $ip_info"
+    else
+        echo "$DESACTIVAT - La NAT està desactivada a la interfície $IFW_IFWAN"
+    fi
+}
+
+fnc_iniciar()
+{
+    # Verificar si la WAN está activa
+    WAN_UP=$(ip link show "$IFW_IFWAN" 2>/dev/null | grep -q "state UP" && echo "1" || echo "0")
+    WAN_IP=$(ip -4 addr show dev "$IFW_IFWAN" | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+' | head -n1)
+
+    if [ "$WAN_UP" != "1" ] || [ -z "$WAN_IP" ]; then
+        echo "❌ No es pot activar el NAT: la WAN ($IFW_IFWAN) no està activa. Primer activa la WAN."
+        return
+    fi
+
+    if [ "$(fnc_estat_raw)" == "$ACTIVAT" ]; then
+        echo "Ja està actiu"
+        return
+    fi
+
+    echo "Iniciant..."
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+    iptables -t nat -A POSTROUTING -o $IFW_IFWAN -j MASQUERADE
+    echo "Activat correctament"
+}
+
+fnc_aturar()
+{
+    if [ "$(fnc_estat_raw)" == "$DESACTIVAT" ]; then
+        echo "Ja està aturat"
+        return
+    fi
+
+    echo "Aturant..."
+    echo 0 > /proc/sys/net/ipv4/ip_forward
+    iptables -t nat -D POSTROUTING -o $IFW_IFWAN -j MASQUERADE
+    echo "Aturat correctament"
+}
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, configurar ,estat]"
+
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar $@
+    ;;
+  aturar)
+    fnc_aturar $@
+    ;;
+  estat)
+    fnc_estat $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac

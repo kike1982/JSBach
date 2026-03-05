@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# Subclase aillar
+
+source /usr/local/JSBach/conf/variables.conf
+
+fnc_aillar_aplicar() {
+    local id=$1
+    local linia=$(grep ";$id;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+    local nom=$(echo "$linia" | cut -d';' -f1)
+    
+    if [ -z "$nom" ]; then
+        echo "❌ Error: no existeix la VLAN $id"
+        return 1
+    fi
+    
+    # Netegem regles anteriors
+    iptables -F "$nom"
+    
+    # Comprovem si es vlan_Admin
+    if [[ "$nom" == "vlan_Admin" ]]; then
+        # Admin: Al reves (Allow NEW)
+        # "solo de la misma red de la vlan_admin se puedan conectar pero si admin intenta conectarse a un servidor de fuera si que debe de poder"
+        # Interpretem: Allow Everything (NEW + ESTABLISHED/RELATED)
+        iptables -A "$nom" -m state --state ESTABLISHED,RELATED -j ACCEPT
+        iptables -A "$nom" -m state --state NEW -j ACCEPT
+    else
+        # Altres VLANs: Aïllar
+        # "si se intenta conectar a fuera no puedan pero si es una respuesta de un servidor si que se pueda"
+        iptables -A "$nom" -m state --state ESTABLISHED,RELATED -j ACCEPT
+        iptables -A "$nom" -m state --state NEW -j DROP
+    fi
+    
+    echo "🔒 VLAN $id aïllada ($nom)"
+}
+
+fnc_aillar_revertir() {
+    local id=$1
+    local linia=$(grep ";$id;" "$DIR/$PROJECTE/$DIR_CONF/$BRIDGE_CONF")
+    local nom=$(echo "$linia" | cut -d';' -f1)
+    
+    if [ -z "$nom" ]; then
+        echo "❌ Error: no existeix la VLAN $id"
+        return 1
+    fi
+    
+    # Desaillar: Desconnectar de la DMZ (Revertir a estat connectat normal)
+    iptables -F "$nom"
+    echo "🔓 VLAN $id desaïllada (Connectada)"
+}

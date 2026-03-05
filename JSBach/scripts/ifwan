@@ -1,0 +1,151 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+source $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
+
+######################################################################
+###  Funcions
+######################################################################
+
+fnc_iniciar()
+{
+    # Comprovar si ja està activa abans de fer res
+    estat_actual=$(fnc_estat | cut -d'-' -f1 | xargs)  # només ACTIVAT o DESACTIVAT
+    if [ "$estat_actual" == "$ACTIVAT" ]; then
+        echo "Ja està activa"
+        exit 1
+    fi
+
+    case "$IFW_MODE" in
+      "dhcp")
+        dhcpcd $IFW_IFWAN
+        echo "$IFW_MODE activant"
+        ;;
+      "manual")
+        ip a a $IFW_IP/$IFW_MASC dev $IFW_IFWAN
+        ip l s dev $IFW_IFWAN up
+        ip r a default via $IFW_PE
+        if grep "#DNS=" /etc/systemd/resolved.conf; then
+            sed -i 's/#DNS=/DNS='$IFW_S_DNS'/g' /etc/systemd/resolved.conf
+        fi
+        if ! grep "DNS=$IFW_S_DNS" /etc/systemd/resolved.conf; then
+            sed -i 's/^DNS=.*/DNS='$IFW_S_DNS'/g' /etc/systemd/resolved.conf
+        fi
+        systemctl restart systemd-resolved
+        ;;
+      *)
+        echo "ERROR al iniciar: mode ha de ser dhcp o manual"
+        ;;
+    esac
+}
+
+fnc_aturar()
+{
+    # No comprovem estat amb fnc_estat perquè depèn de ping a google.
+    # Simplement forcem l'aturada de serveis i IPs.
+
+    # Netegem tot independentment del mode configurat (per si ha canviat)
+    echo "Aturant interfície $IFW_IFWAN..."
+    
+    # Intentem aturar dhcpcd sempre
+    if pidof dhcpcd >/dev/null; then
+        dhcpcd -k $IFW_IFWAN &>/dev/null || true
+    fi
+
+    # Eliminem IPs i baixem la interfície
+    ip addr flush dev $IFW_IFWAN
+    ip link set dev $IFW_IFWAN down
+    
+    # Esborrem default route si n'hi ha associada (per seguretat, tot i que el flush ho fa)
+    ip route flush dev $IFW_IFWAN
+}
+
+source $DIR/$PROJECTE/$DIR_SCRIPTS/validacions
+
+fnc_configurar()
+{
+    if [[ "$1" == "mostrar" ]]; then
+        echo $IFW_MODE $IFW_IFWAN $IFW_IP $IFW_MASC $IFW_PE $IFW_S_DNS
+    else
+        # Si el mode es manual, validamos los parámetros
+        if [[ "$1" == "manual" ]]; then
+            local ip=$(echo "$3" | cut -d'/' -f1)
+            local mascara=$(echo "$3" | cut -d'/' -f2)
+            local gateway=$4
+            local dns=$5
+
+            if ! validar_ip "$ip"; then echo "❌ ERROR: Dirección IP no válida ($ip)"; exit 1; fi
+            if ! validar_mascara "$mascara"; then echo "❌ ERROR: Máscara no válida ($mascara)"; exit 1; fi
+            if ! validar_gateway "$gateway"; then echo "❌ ERROR: Puerta de enlace no válida ($gateway)"; exit 1; fi
+            if ! validar_dns "$dns"; then echo "❌ ERROR: DNS no válido ($dns)"; exit 1; fi
+            
+            if ! validar_misma_red "$ip" "$mascara" "$gateway"; then
+                echo "❌ ERROR: La IP ($ip) y la puerta de enlace ($gateway) deben estar en la misma red (máscara $mascara)"
+                exit 1
+            fi
+        fi
+
+        fnc_aturar
+        (
+            echo IFW_MODE=$1
+            echo IFW_IFWAN=$2
+            echo IFW_IP=$( echo $3 | cut -d'/' -f1 )
+            echo IFW_MASC=$( echo $3 | cut -d'/' -f2 )
+            echo IFW_PE=$4
+            echo IFW_S_DNS=$5
+        ) >  $DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN
+
+        echo "✅ Configuració guardada i targeta aturada"
+    fi
+}
+
+fnc_estat()
+{
+    # Comprovem si hi ha connexió a internet
+    if nslookup google.com > /dev/null 2>&1 ; then
+        estat="$ACTIVAT"
+    else
+        estat="$DESACTIVAT"
+    fi
+
+    # Obtenim la IP i la màscara actual de la interfície
+    if ip_addr=$(ip -4 addr show dev $IFW_IFWAN | grep -oP '(?<=inet\s)\d+(\.\d+){3}/\d+'); then
+        ip_info="${IFW_IFWAN}: $ip_addr"
+    else
+        ip_info="${IFW_IFWAN}: no assignada"
+    fi
+
+    echo "$estat - Interfície i IP/Màscara: $ip_info"
+}
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="Falta [iniciar, aturar, configurar, estat]"
+
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar $@
+    ;;
+  aturar)
+    fnc_aturar $@
+    ;;
+  configurar)
+    fnc_configurar $@
+    ;;
+  estat)
+    fnc_estat $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac

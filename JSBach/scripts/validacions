@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# validacions - Funciones de validación de red para el ecosistema JSBach
+
+# Valida formato de IP (IPv4)
+validar_ip() {
+    local ip=$1
+    if [[ $ip =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+        IFS='.' read -r -a octets <<< "$ip"
+        for octet in "${octets[@]}"; do
+            if ((octet < 0 || octet > 255)); then
+                return 1
+            fi
+        done
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Valida formato de máscara de red (decimal o CIDR)
+validar_mascara() {
+    local mask=$1
+    # Check CIDR (0-32)
+    if [[ $mask =~ ^[0-9]{1,2}$ ]]; then
+        if ((mask >= 0 && mask <= 32)); then
+            return 0
+        fi
+    fi
+    # Check notation X.X.X.X
+    validar_ip "$mask"
+    return $?
+}
+
+# Valida puerta de enlace (mismo formato que IP)
+validar_gateway() {
+    validar_ip "$1"
+    return $?
+}
+
+# Valida DNS (mismo formato que IP)
+validar_dns() {
+    validar_ip "$1"
+    return $?
+}
+
+# Convierte IP a entero
+ip_to_int() {
+    local ip=$1
+    local a b c d
+    IFS=. read -r a b c d <<< "$ip"
+    echo "$(( (a << 24) + (b << 16) + (c << 8) + d ))"
+}
+
+# Convierte máscara a entero
+mask_to_int() {
+    local mask=$1
+    if [[ $mask =~ ^[0-9]{1,2}$ ]]; then
+        echo "$(( 0xFFFFFFFF << (32 - mask) & 0xFFFFFFFF ))"
+    else
+        ip_to_int "$mask"
+    fi
+}
+
+# Valida si la IP y el Gateway están en la misma red
+validar_misma_red() {
+    local ip=$(echo "$1" | cut -d'/' -f1)
+    local mask=$2
+    local gateway=$(echo "$3" | cut -d'/' -f1)
+
+    # Si la máscara viene de un CIDR (ej: 10.0.1.0/24), extraemos el /24
+    if [[ $mask =~ / ]]; then
+        mask=$(echo "$mask" | cut -d'/' -f2)
+    fi
+
+    local ip_int=$(ip_to_int "$ip")
+    local gateway_int=$(ip_to_int "$gateway")
+    local mask_int=$(mask_to_int "$mask")
+
+    if (( (ip_int & mask_int) == (gateway_int & mask_int) )); then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Valida formato de MAC (XX:XX:XX:XX:XX:XX)
+validar_mac() {
+    local mac=$1
+    if [[ $mac =~ ^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$ ]]; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Valida si un puerto está en el rango correcto (0-65535)
+validar_port() {
+    local port=$1
+    if [[ $port =~ ^[0-9]+$ ]] && ((port >= 0 && port <= 65535)); then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Valida que la contraseña no contenga caracteres peligrosos para shell
+validar_password_segura() {
+    local pass=$1
+    # Buscamos: $ ( ) ` " ' ; & |
+    if echo "$pass" | grep -q '[$()\`"'\'' ;&|]'; then
+        return 1
+    else
+        return 0
+    fi
+}
