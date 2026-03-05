@@ -1,0 +1,401 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+source $DIR/$PROJECTE/$DIR_SCRIPTS/validacions
+
+WIFI_CONF_FILE="$DIR/$PROJECTE/$DIR_CONF/$WIFI_CONF"
+WIFI_CLIENTS_FILE="$DIR/$PROJECTE/$DIR_CONF/$WIFI_CLIENTS_CONF"
+HOSTAPD_CONF="/etc/hostapd/hostapd.conf"
+DNSMASQ_WIFI_CONF="/etc/dnsmasq.d/wifi.conf"
+
+# Carregar WIFI_IF des de wifi.conf (configurable per equip)
+source "$WIFI_CONF_FILE"
+
+######################################################################
+###  Funcions auxiliars
+######################################################################
+
+fnc_carregar_conf()
+{
+  source "$WIFI_CONF_FILE"
+
+  # Si la interfície configurada no existeix com a wireless, auto-detectar
+  if [ ! -d "/sys/class/net/$WIFI_IF/wireless" ]; then
+    WIFI_IF_DETECTAT=""
+    for iface in /sys/class/net/*/; do
+      IFACE_NAME=$(basename "$iface")
+      if [ -d "$iface/wireless" ]; then
+        WIFI_IF_DETECTAT="$IFACE_NAME"
+        break
+      fi
+    done
+
+    if [ -n "$WIFI_IF_DETECTAT" ]; then
+      sed -i "s/^WIFI_IF=.*/WIFI_IF=$WIFI_IF_DETECTAT/" "$WIFI_CONF_FILE"
+      WIFI_IF="$WIFI_IF_DETECTAT"
+      echo "INFO: Interfície WiFi auto-detectada i guardada: $WIFI_IF"
+    else
+      echo "ERROR: No s'ha detectat cap interfície WiFi al sistema"
+      exit 1
+    fi
+  fi
+}
+
+fnc_generar_hostapd()
+{
+  fnc_carregar_conf
+  mkdir -p /etc/hostapd
+  cat > "$HOSTAPD_CONF" << EOF
+interface=$WIFI_IF
+driver=nl80211
+ssid=$WIFI_SSID
+hw_mode=g
+channel=$WIFI_CHANNEL
+wmm_enabled=1
+macaddr_acl=0
+auth_algs=1
+ignore_broadcast_ssid=0
+country_code=ES
+ieee80211n=1
+wpa=2
+wpa_passphrase=$WIFI_PASSWORD
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+EOF
+}
+
+fnc_generar_dnsmasq()
+{
+  fnc_carregar_conf
+  mkdir -p /etc/dnsmasq.d
+  cat > "$DNSMASQ_WIFI_CONF" << EOF
+# WiFi AP - generat per JSBach
+interface=$WIFI_IF
+bind-interfaces
+except-interface=lo
+server=127.0.0.53
+dhcp-range=$WIFI_DHCP_START,$WIFI_DHCP_END,255.255.255.0,$WIFI_DHCP_LEASE
+dhcp-option=3,$WIFI_IP
+dhcp-option=6,$WIFI_IP
+EOF
+
+  # Afegir IPs fixes dels clients
+  while IFS=';' read -r mac ip nom estat; do
+    [[ -z "$mac" || "$mac" =~ ^# ]] && continue
+    [[ -n "$ip" && -n "$nom" ]] && echo "dhcp-host=$mac,$ip,$nom" >> "$DNSMASQ_WIFI_CONF"
+  done < "$WIFI_CLIENTS_FILE"
+}
+
+fnc_aplicar_mac_blocks()
+{
+  while IFS=';' read -r mac ip nom estat; do
+    [[ -z "$mac" || "$mac" =~ ^# ]] && continue
+    if [[ "$estat" == "BLOQUEJAT" ]]; then
+      iptables -C FORWARD -i "$WIFI_IF" -m mac --mac-source "$mac" -j DROP 2>/dev/null || \
+        iptables -I FORWARD -i "$WIFI_IF" -m mac --mac-source "$mac" -j DROP
+      iptables -C INPUT -i "$WIFI_IF" -m mac --mac-source "$mac" -j DROP 2>/dev/null || \
+        iptables -I INPUT -i "$WIFI_IF" -m mac --mac-source "$mac" -j DROP
+    fi
+  done < "$WIFI_CLIENTS_FILE"
+}
+
+fnc_netejar_mac_blocks()
+{
+  while IFS=';' read -r mac ip nom estat; do
+    [[ -z "$mac" || "$mac" =~ ^# ]] && continue
+    iptables -D FORWARD -i "$WIFI_IF" -m mac --mac-source "$mac" -j DROP 2>/dev/null
+    iptables -D INPUT -i "$WIFI_IF" -m mac --mac-source "$mac" -j DROP 2>/dev/null
+  done < "$WIFI_CLIENTS_FILE"
+}
+
+######################################################################
+###  Funcions principals
+######################################################################
+
+fnc_iniciar()
+{
+  if [[ "$(fnc_estat)" == "$ACTIVAT" ]]; then
+    echo "⚠️ WiFi AP ja està actiu"
+    return 0
+  fi
+
+  fnc_carregar_conf
+
+  echo "📡 Preparant interfície $WIFI_IF..."
+  # Aturar qualsevol procés que pugui usar la interfície
+  pkill -x hostapd 2>/dev/null || true
+  sleep 1
+
+  # Baixar la interfície completament per netejar l'estat del driver
+  ip link set "$WIFI_IF" down 2>/dev/null
+  ip addr flush dev "$WIFI_IF" 2>/dev/null
+  sleep 1
+
+  echo "📝 Generant configuració hostapd..."
+  fnc_generar_hostapd
+
+  echo "📝 Generant configuració dnsmasq..."
+  fnc_generar_dnsmasq
+
+  echo "🚀 Iniciant hostapd..."
+  # hostapd s'encarrega de pujar la interfície en mode AP
+  hostapd -B "$HOSTAPD_CONF" -f /tmp/hostapd.log 2>&1
+  sleep 3
+
+  if ! pgrep -x hostapd > /dev/null 2>&1; then
+    echo "❌ Error: hostapd no ha arrencat."
+    echo "--- Log hostapd ---"
+    cat /tmp/hostapd.log 2>/dev/null || echo "(sense log)"
+    return 1
+  fi
+
+  # Assignar IP després que hostapd ha configurat la interfície
+  echo "🌐 Assignant IP a $WIFI_IF..."
+  ip addr add "$WIFI_IP/$WIFI_PREFIX" dev "$WIFI_IF" 2>/dev/null
+  ip link set "$WIFI_IF" up 2>/dev/null
+
+  echo "🔄 Reiniciant dnsmasq..."
+  systemctl restart dnsmasq
+  sleep 1
+
+  echo "🔥 Aplicant regles de firewall WiFi..."
+  source "$DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN"
+
+  # Activar ip_forward si no està actiu (necessari per enrutar tràfic WiFi -> WAN)
+  if [[ "$(cat /proc/sys/net/ipv4/ip_forward)" != "1" ]]; then
+    echo "⚠️ ip_forward desactivat, activant..."
+    echo 1 > /proc/sys/net/ipv4/ip_forward
+    echo "✅ ip_forward activat"
+  fi
+
+  # NAT: assegurar que el tràfic WiFi surt per la WAN
+  iptables -t nat -C POSTROUTING -o "$IFW_IFWAN" -j MASQUERADE 2>/dev/null || \
+    iptables -t nat -A POSTROUTING -o "$IFW_IFWAN" -j MASQUERADE
+
+  iptables -C FORWARD -i "$WIFI_IF" -o "$IFW_IFWAN" -j ACCEPT 2>/dev/null || \
+    iptables -A FORWARD -i "$WIFI_IF" -o "$IFW_IFWAN" -j ACCEPT
+  iptables -C FORWARD -i "$IFW_IFWAN" -o "$WIFI_IF" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || \
+    iptables -A FORWARD -i "$IFW_IFWAN" -o "$WIFI_IF" -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+  fnc_aplicar_mac_blocks
+
+  echo "✅ WiFi AP actiu - SSID: $WIFI_SSID"
+}
+
+fnc_aturar()
+{
+  if [[ "$(fnc_estat)" == "$DESACTIVAT" ]]; then
+    echo "⚠️ WiFi AP ja està desactivat"
+    return 0
+  fi
+
+  fnc_carregar_conf
+
+  echo "🛑 Aturant hostapd..."
+  pkill -x hostapd 2>/dev/null || true
+  sleep 1
+
+  echo "🗑️ Eliminant configuració dnsmasq WiFi..."
+  rm -f "$DNSMASQ_WIFI_CONF"
+  systemctl restart dnsmasq
+
+  echo "🔥 Netejant regles de firewall WiFi..."
+  source "$DIR/$PROJECTE/$DIR_CONF/$CONF_IFWAN"
+  iptables -D FORWARD -i "$WIFI_IF" -o "$IFW_IFWAN" -j ACCEPT 2>/dev/null
+  iptables -D FORWARD -i "$IFW_IFWAN" -o "$WIFI_IF" -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null
+
+  fnc_netejar_mac_blocks
+
+  echo "📴 Alliberant interfície $WIFI_IF..."
+  ip addr flush dev "$WIFI_IF" 2>/dev/null
+
+  echo "✅ WiFi AP desactivat"
+}
+
+fnc_estat()
+{
+  if pgrep -x "hostapd" > /dev/null 2>&1; then
+    echo "$ACTIVAT"
+  else
+    echo "$DESACTIVAT"
+  fi
+}
+
+fnc_configurar()
+{
+  ACCIO=$1
+  shift
+
+  case "$ACCIO" in
+
+    afegir)
+      MAC=$1; IP=$2; NOM=$3
+      if [[ -z "$MAC" || -z "$IP" || -z "$NOM" ]]; then
+        echo "❌ Ús: configurar afegir <mac> <ip> <nom>"
+        return 1
+      fi
+      if ! validar_mac "$MAC"; then
+        echo "❌ MAC invàlida ($MAC)"
+        return 1
+      fi
+      if ! validar_ip "$IP"; then
+        echo "❌ IP invàlida ($IP)"
+        return 1
+      fi
+      MAC_UP=$(echo "$MAC" | tr '[:lower:]' '[:upper:]')
+      if grep -qi "^$MAC_UP" "$WIFI_CLIENTS_FILE"; then
+        echo "⚠️ El client ja existeix"
+        return 0
+      fi
+      echo "$MAC_UP;$IP;$NOM;PERMES" >> "$WIFI_CLIENTS_FILE"
+      if [[ "$(fnc_estat)" == "$ACTIVAT" ]]; then
+        fnc_generar_dnsmasq
+        systemctl restart dnsmasq
+      fi
+      echo "✅ Client afegit: $MAC_UP ($IP) - $NOM"
+      ;;
+
+    eliminar)
+      MAC=$1
+      if [[ -z "$MAC" ]]; then
+        echo "❌ Ús: configurar eliminar <mac>"
+        return 1
+      fi
+      MAC_UP=$(echo "$MAC" | tr '[:lower:]' '[:upper:]')
+      if ! grep -qi "^$MAC_UP" "$WIFI_CLIENTS_FILE"; then
+        echo "⚠️ El client no existeix"
+        return 0
+      fi
+      iptables -D FORWARD -i "$WIFI_IF" -m mac --mac-source "$MAC_UP" -j DROP 2>/dev/null
+      iptables -D INPUT -i "$WIFI_IF" -m mac --mac-source "$MAC_UP" -j DROP 2>/dev/null
+      sed -i "/^${MAC_UP};/Id" "$WIFI_CLIENTS_FILE"
+      if [[ "$(fnc_estat)" == "$ACTIVAT" ]]; then
+        fnc_generar_dnsmasq
+        systemctl restart dnsmasq
+      fi
+      echo "✅ Client eliminat: $MAC_UP"
+      ;;
+
+    bloquejar)
+      MAC=$1
+      if [[ -z "$MAC" ]]; then
+        echo "❌ Ús: configurar bloquejar <mac>"
+        return 1
+      fi
+      MAC_UP=$(echo "$MAC" | tr '[:lower:]' '[:upper:]')
+      if ! grep -qi "^$MAC_UP" "$WIFI_CLIENTS_FILE"; then
+        echo "⚠️ El client no existeix al fitxer de clients"
+        return 0
+      fi
+      sed -i "s/^\(${MAC_UP};.*;\)PERMES$/\1BLOQUEJAT/I" "$WIFI_CLIENTS_FILE"
+      if [[ "$(fnc_estat)" == "$ACTIVAT" ]]; then
+        iptables -C FORWARD -i "$WIFI_IF" -m mac --mac-source "$MAC_UP" -j DROP 2>/dev/null || \
+          iptables -I FORWARD -i "$WIFI_IF" -m mac --mac-source "$MAC_UP" -j DROP
+        iptables -C INPUT -i "$WIFI_IF" -m mac --mac-source "$MAC_UP" -j DROP 2>/dev/null || \
+          iptables -I INPUT -i "$WIFI_IF" -m mac --mac-source "$MAC_UP" -j DROP
+      fi
+      echo "🚫 Client bloquejat: $MAC_UP"
+      ;;
+
+    desbloquejar)
+      MAC=$1
+      if [[ -z "$MAC" ]]; then
+        echo "❌ Ús: configurar desbloquejar <mac>"
+        return 1
+      fi
+      MAC_UP=$(echo "$MAC" | tr '[:lower:]' '[:upper:]')
+      sed -i "s/^\(${MAC_UP};.*;\)BLOQUEJAT$/\1PERMES/I" "$WIFI_CLIENTS_FILE"
+      if [[ "$(fnc_estat)" == "$ACTIVAT" ]]; then
+        iptables -D FORWARD -i "$WIFI_IF" -m mac --mac-source "$MAC_UP" -j DROP 2>/dev/null
+        iptables -D INPUT -i "$WIFI_IF" -m mac --mac-source "$MAC_UP" -j DROP 2>/dev/null
+      fi
+      echo "✅ Client desbloquejat: $MAC_UP"
+      ;;
+
+    mostrar)
+      echo "MAC;IP;Nom;Estat"
+      grep -v '^#' "$WIFI_CLIENTS_FILE" | grep -v '^$'
+      ;;
+
+    guardar_xarxa)
+      SSID=$1; PASS=$2; CHANNEL=$3; IP=$4; PREFIX=$5; DHCP_START=$6; DHCP_END=$7
+      if [[ -z "$SSID" || -z "$PASS" || -z "$CHANNEL" || -z "$IP" || -z "$PREFIX" || -z "$DHCP_START" || -z "$DHCP_END" ]]; then
+        echo "❌ Falten paràmetres"
+        return 1
+      fi
+      if ! validar_password_segura "$PASS"; then
+        echo "❌ Contrasenya amb caràcters invàlids"
+        return 1
+      fi
+      if [[ ${#PASS} -lt 8 ]]; then
+        echo "❌ La contrasenya ha de tenir mínim 8 caràcters"
+        return 1
+      fi
+      if ! validar_ip "$IP"; then
+        echo "❌ IP invàlida"
+        return 1
+      fi
+      cat > "$WIFI_CONF_FILE" << CONFEOF
+WIFI_SSID=$SSID
+WIFI_PASSWORD=$PASS
+WIFI_CHANNEL=$CHANNEL
+WIFI_IP=$IP
+WIFI_PREFIX=$PREFIX
+WIFI_DHCP_START=$DHCP_START
+WIFI_DHCP_END=$DHCP_END
+WIFI_DHCP_LEASE=12h
+CONFEOF
+      echo "✅ Configuració de xarxa guardada"
+      if [[ "$(fnc_estat)" == "$ACTIVAT" ]]; then
+        echo "🔄 Reiniciant AP amb la nova configuració..."
+        fnc_aturar
+        sleep 1
+        fnc_iniciar
+      fi
+      ;;
+
+    *)
+      echo "Opcions vàlides:"
+      echo "  configurar afegir <mac> <ip> <nom>"
+      echo "  configurar eliminar <mac>"
+      echo "  configurar bloquejar <mac>"
+      echo "  configurar desbloquejar <mac>"
+      echo "  configurar mostrar"
+      echo "  configurar guardar_xarxa <ssid> <pass> <canal> <ip> <prefix> <dhcp_start> <dhcp_end>"
+      return 1
+      ;;
+  esac
+}
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, configurar, estat]"
+
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar $@
+    ;;
+  aturar)
+    fnc_aturar $@
+    ;;
+  configurar)
+    fnc_configurar $@
+    ;;
+  estat)
+    fnc_estat $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac

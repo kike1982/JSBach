@@ -8,8 +8,8 @@ if [ "$EUID" -ne 0 ]; then
   echo "Este script debe ejecutarse como root"
   exit 1
 fi
-
-source /usr/local/JSBach/conf/variables.conf
+source "$(cd "$(dirname "$0")/.." && pwd)/conf/variables.conf"
+#source /usr/local/JSBach/conf/variables.conf
 
 ####################################
 ### Funciones del primer script
@@ -37,7 +37,7 @@ fnc_instala_aplicacions() {
     echo "⚙️ Instalando aplicaciones necesarias..."
     apt update
 
-    for paquete in net-tools iw apache2 curl expect; do
+    for paquete in net-tools iw apache2 curl expect hostapd dnsmasq; do
         echo "⚙️ Instalando $paquete"
         apt install -y "$paquete"
     done
@@ -60,6 +60,46 @@ EOF
     echo "✅ Activando configuración Apache"
     a2enconf jsbach-cgi
     systemctl restart apache2
+}
+
+fnc_detectar_wifi() {
+    echo "🔍 Detectant interfície WiFi..."
+
+    # Buscar interfaces wireless a /sys/class/net
+    WIFI_IFACES=()
+    for iface in /sys/class/net/*/; do
+        IFACE_NAME=$(basename "$iface")
+        if [ -d "$iface/wireless" ]; then
+            WIFI_IFACES+=("$IFACE_NAME")
+        fi
+    done
+
+    if [ ${#WIFI_IFACES[@]} -eq 0 ]; then
+        echo "⚠️  No s'ha detectat cap interfície WiFi. Edita manualment conf/wifi.conf (camp WIFI_IF)."
+        return
+    fi
+
+    if [ ${#WIFI_IFACES[@]} -eq 1 ]; then
+        WIFI_IFACE="${WIFI_IFACES[0]}"
+        echo "✅ Interfície WiFi detectada: $WIFI_IFACE"
+    else
+        echo "S'han detectat múltiples interfícies WiFi:"
+        for i in "${!WIFI_IFACES[@]}"; do
+            echo "  $((i+1))) ${WIFI_IFACES[$i]}"
+        done
+        read -rp "Escull el número de la interfície a usar per l'AP WiFi: " OPCIO
+        WIFI_IFACE="${WIFI_IFACES[$((OPCIO-1))]}"
+        echo "✅ Interfície seleccionada: $WIFI_IFACE"
+    fi
+
+    # Escriure WIFI_IF a wifi.conf
+    WIFI_CONF_FILE="/usr/local/JSBach/conf/wifi.conf"
+    if [ -f "$WIFI_CONF_FILE" ]; then
+        sed -i "s/^WIFI_IF=.*/WIFI_IF=$WIFI_IFACE/" "$WIFI_CONF_FILE"
+        echo "📝 wifi.conf actualitzat amb WIFI_IF=$WIFI_IFACE"
+    else
+        echo "⚠️  No s'ha trobat $WIFI_CONF_FILE"
+    fi
 }
 
 ####################################

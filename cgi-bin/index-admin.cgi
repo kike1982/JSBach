@@ -68,6 +68,11 @@ function switches(){
     window.top.frames['menu'].location.href='/cgi-bin/switch-menu.cgi';
     window.top.frames['body'].location.href='/cgi-bin/switch.cgi?comand=estat&';
 }
+function wifi(){
+    setActive('btn-wifi');
+    window.top.frames['menu'].location.href='/cgi-bin/wifi-menu.cgi';
+    window.top.frames['body'].location.href='/cgi-bin/wifi.cgi?comand=estat&';
+}
 </script>
 
 <table width="100%">
@@ -81,6 +86,7 @@ function switches(){
       <button id="btn-tallafocs" onclick="tallafocs()">TALLAFOCS</button>
       <button id="btn-dmz" onclick="dmz()">DMZ</button>
       <button id="btn-switch" onclick="switches()">SWITCH</button>
+      <button id="btn-wifi" onclick="wifi()">WIFI</button>
     </td>    
   </tr>
 </table>

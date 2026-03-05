@@ -397,6 +397,7 @@ details > *:not(summary) { padding: 1rem; }
 .card-tallafocs { border-left: 3px solid var(--err); }
 .card-dmz       { border-left: 3px solid #a855f7; }
 .card-switch    { border-left: 3px solid var(--warn); }
+.card-wifi      { border-left: 3px solid #38bdf8; }
 
 /* Badges adicionales */
 .badge-conn     { background: rgba(63,185,80,0.12);   color: #5cb85c; border-color: rgba(63,185,80,0.3); }

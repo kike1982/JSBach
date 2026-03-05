@@ -53,6 +53,13 @@ get_status() {
                 res="DESACTIVAT"
             fi
             ;;
+        wifi)
+            if /usr/local/JSBach/scripts/client_srv_cli wifi estat | grep -qw "ACTIVAT"; then
+                res="ACTIVAT"
+            else
+                res="DESACTIVAT"
+            fi
+            ;;
     esac
     echo "$res"
 }
@@ -120,7 +127,7 @@ cat <<EOF
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // Lista de módulos a consultar de forma asíncrona
-    const modules = ['wan', 'enrutar', 'bridge', 'tallafocs', 'dmz', 'switch'];
+    const modules = ['wan', 'enrutar', 'bridge', 'tallafocs', 'dmz', 'switch', 'wifi'];
     
     modules.forEach(mod => {
         const badge = document.getElementById('status-' + mod);
@@ -199,6 +206,14 @@ CONTENT_SWITCH="
     <li>Gestión de Listas de Control de Acceso (ACLs).</li>
 </ul>"
 
+CONTENT_WIFI="
+<p>Punt d'accés WiFi integrat:</p>
+<ul>
+    <li>AP amb <strong>hostapd</strong> sobre interfície wlo1.</li>
+    <li>DHCP i DNS via <strong>dnsmasq</strong>.</li>
+    <li>Control d'accés per <strong>adreça MAC</strong>.</li>
+</ul>"
+
 # --- Mostrar módulos ---
 if [ -z "$MODULO" ]; then
     # Por defecto mostrar todos
@@ -208,6 +223,7 @@ if [ -z "$MODULO" ]; then
     render_card "tallafocs" "Tallafocs" "" "card-tallafocs" "$CONTENT_TALLAFOCS"
     render_card "dmz" "DMZ" "" "card-dmz" "$CONTENT_DMZ"
     render_card "switch" "Switches" "" "card-switch" "$CONTENT_SWITCH"
+    render_card "wifi" "WiFi AP" "📡" "card-wifi" "$CONTENT_WIFI"
 else
     case "$MODULO" in
         wan) render_card "wan" "WAN" "" "card-wan" "$CONTENT_WAN" ;;
@@ -216,6 +232,7 @@ else
         tallafocs) render_card "tallafocs" "Tallafocs" "" "card-tallafocs" "$CONTENT_TALLAFOCS" ;;
         dmz) render_card "dmz" "DMZ" "" "card-dmz" "$CONTENT_DMZ" ;;
         switch) render_card "switch" "Switches" "" "card-switch" "$CONTENT_SWITCH" ;;
+        wifi)  render_card "wifi" "WiFi AP" "📡" "card-wifi" "$CONTENT_WIFI" ;;
         *) echo "<div class='no-selection'>Módulo <code>$MODULO</code> no encontrado.</div>" ;;
     esac
 fi
