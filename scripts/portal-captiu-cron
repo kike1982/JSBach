@@ -1,0 +1,4 @@
+#!/bin/bash
+# portal-captiu-cron - Invocat pel cron per verificar sessions del portal captiu
+
+/usr/local/JSBach/scripts/portal-captiu verificar_sessions >> /var/log/jsbach-portal-captiu.log 2>&1

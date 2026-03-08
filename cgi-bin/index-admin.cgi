@@ -73,6 +73,11 @@ function wifi(){
     window.top.frames['menu'].location.href='/cgi-bin/wifi-menu.cgi';
     window.top.frames['body'].location.href='/cgi-bin/wifi.cgi?comand=estat&';
 }
+function portalCaptiu(){
+    setActive('btn-portal');
+    window.top.frames['menu'].location.href='/cgi-bin/portal-captiu-menu.cgi';
+    window.top.frames['body'].location.href='/cgi-bin/portal-captiu.cgi?comand=estat&';
+}
 </script>
 
 <table width="100%">
@@ -87,6 +92,7 @@ function wifi(){
       <button id="btn-dmz" onclick="dmz()">DMZ</button>
       <button id="btn-switch" onclick="switches()">SWITCH</button>
       <button id="btn-wifi" onclick="wifi()">WIFI</button>
+      <button id="btn-portal" onclick="portalCaptiu()">PORTAL</button>
     </td>    
   </tr>
 </table>

@@ -32,6 +32,9 @@ do
 			"wifi")
 			    $DIR/$PROJECTE/$DIR_SCRIPTS/wifi $Arguments
 			    ;;
+			"portal-captiu")
+			    $DIR/$PROJECTE/$DIR_SCRIPTS/portal-captiu $Arguments
+			    ;;
 			*)
 			    echo "CLI Error en l'argument $Comando $Arguments"
 			    ;;

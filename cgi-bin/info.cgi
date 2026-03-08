@@ -60,6 +60,13 @@ get_status() {
                 res="DESACTIVAT"
             fi
             ;;
+        portal-captiu)
+            if /usr/local/JSBach/scripts/client_srv_cli portal-captiu estat | grep -qw "ACTIVAT"; then
+                res="ACTIVAT"
+            else
+                res="DESACTIVAT"
+            fi
+            ;;
     esac
     echo "$res"
 }
@@ -127,7 +134,7 @@ cat <<EOF
 <script>
 document.addEventListener('DOMContentLoaded', () => {
     // Lista de módulos a consultar de forma asíncrona
-    const modules = ['wan', 'enrutar', 'bridge', 'tallafocs', 'dmz', 'switch', 'wifi'];
+    const modules = ['wan', 'enrutar', 'bridge', 'tallafocs', 'dmz', 'switch', 'wifi', 'portal-captiu'];
     
     modules.forEach(mod => {
         const badge = document.getElementById('status-' + mod);
@@ -214,6 +221,14 @@ CONTENT_WIFI="
     <li>Control d'accés per <strong>adreça MAC</strong>.</li>
 </ul>"
 
+CONTENT_PORTAL="
+<p>Portal captiu per a clients WiFi:</p>
+<ul>
+    <li>Redirigeix HTTP a una pàgina de <strong>login</strong> via iptables DNAT.</li>
+    <li>Autenticació per <strong>usuari i contrasenya</strong>.</li>
+    <li>Sessions amb <strong>expiració automàtica</strong> per temps o desconnexió.</li>
+</ul>"
+
 # --- Mostrar módulos ---
 if [ -z "$MODULO" ]; then
     # Por defecto mostrar todos
@@ -224,6 +239,7 @@ if [ -z "$MODULO" ]; then
     render_card "dmz" "DMZ" "" "card-dmz" "$CONTENT_DMZ"
     render_card "switch" "Switches" "" "card-switch" "$CONTENT_SWITCH"
     render_card "wifi" "WiFi AP" "📡" "card-wifi" "$CONTENT_WIFI"
+    render_card "portal-captiu" "Portal Captiu" "" "card-portal" "$CONTENT_PORTAL"
 else
     case "$MODULO" in
         wan) render_card "wan" "WAN" "" "card-wan" "$CONTENT_WAN" ;;
@@ -233,6 +249,7 @@ else
         dmz) render_card "dmz" "DMZ" "" "card-dmz" "$CONTENT_DMZ" ;;
         switch) render_card "switch" "Switches" "" "card-switch" "$CONTENT_SWITCH" ;;
         wifi)  render_card "wifi" "WiFi AP" "📡" "card-wifi" "$CONTENT_WIFI" ;;
+        portal-captiu) render_card "portal-captiu" "Portal Captiu" "" "card-portal" "$CONTENT_PORTAL" ;;
         *) echo "<div class='no-selection'>Módulo <code>$MODULO</code> no encontrado.</div>" ;;
     esac
 fi

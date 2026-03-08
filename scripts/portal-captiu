@@ -1,0 +1,440 @@
+#!/bin/bash
+
+source /usr/local/JSBach/conf/variables.conf
+source $DIR/$PROJECTE/$DIR_SCRIPTS/validacions
+
+PORTAL_CONF_FILE="$DIR/$PROJECTE/$DIR_CONF/$PORTAL_CAPTIU_CONF"
+PORTAL_SETTINGS_FILE="$DIR/$PROJECTE/$DIR_CONF/$PORTAL_CAPTIU_SETTINGS_CONF"
+WIFI_CONF_FILE="$DIR/$PROJECTE/$DIR_CONF/$WIFI_CONF"
+CRON_FILE="/etc/cron.d/jsbach-portal-captiu"
+
+######################################################################
+###  Funcions auxiliars
+######################################################################
+
+fnc_carregar_conf()
+{
+  source "$PORTAL_SETTINGS_FILE"
+  source "$WIFI_CONF_FILE" 2>/dev/null || true
+
+  # Auto-detectar interfície WiFi si no existeix
+  if [ ! -d "/sys/class/net/$WIFI_IF/wireless" ] 2>/dev/null; then
+    for iface in /sys/class/net/*/; do
+      IFACE_NAME=$(basename "$iface")
+      if [ -d "$iface/wireless" ]; then
+        WIFI_IF="$IFACE_NAME"
+        break
+      fi
+    done
+  fi
+}
+
+fnc_afegir_regles_ip()
+{
+  local IP=$1
+  # NAT: bypass DNAT per a aquesta IP (inserir abans la regla DNAT)
+  iptables -t nat -I PORTAL_CAPTIU_HTTP -s "$IP" -j RETURN 2>/dev/null
+  # FILTER: permetre IP autenticada (inserir a l'inici, abans del DROP)
+  iptables -I PORTAL_AUTH 1 -s "$IP" -j ACCEPT 2>/dev/null
+}
+
+fnc_eliminar_regles_ip()
+{
+  local IP=$1
+  iptables -t nat -D PORTAL_CAPTIU_HTTP -s "$IP" -j RETURN 2>/dev/null
+  iptables -D PORTAL_AUTH -s "$IP" -j ACCEPT 2>/dev/null
+}
+
+fnc_actualitzar_sessio()
+{
+  local target_user=$1 ip=$2 mac=$3 ts=$4
+  local TMPFILE
+  TMPFILE=$(mktemp)
+  while IFS= read -r line; do
+    if [[ -z "$line" || "$line" =~ ^# ]]; then
+      echo "$line" >> "$TMPFILE"
+    else
+      u=$(echo "$line" | cut -d';' -f1)
+      p=$(echo "$line" | cut -d';' -f2)
+      if [[ "$u" == "$target_user" ]]; then
+        echo "${u};${p};${ip};${mac};${ts}" >> "$TMPFILE"
+      else
+        echo "$line" >> "$TMPFILE"
+      fi
+    fi
+  done < "$PORTAL_CONF_FILE"
+  mv "$TMPFILE" "$PORTAL_CONF_FILE"
+  chmod 640 "$PORTAL_CONF_FILE"
+}
+
+######################################################################
+###  Funcions principals
+######################################################################
+
+fnc_iniciar()
+{
+  if [[ "$(fnc_estat)" == "$ACTIVAT" ]]; then
+    echo "Portal captiu ja esta actiu"
+    return 0
+  fi
+
+  fnc_carregar_conf
+
+  echo "Creant cadenes iptables del portal captiu..."
+
+  # NAT: cadena per redirigir HTTP no autenticat
+  iptables -t nat -N PORTAL_CAPTIU_HTTP 2>/dev/null
+  iptables -t nat -D PREROUTING -i "$WIFI_IF" -p tcp --dport 80 -j PORTAL_CAPTIU_HTTP 2>/dev/null
+  iptables -t nat -A PREROUTING -i "$WIFI_IF" -p tcp --dport 80 -j PORTAL_CAPTIU_HTTP
+
+  # FILTER: cadena de control d'acces
+  iptables -N PORTAL_AUTH 2>/dev/null
+  # Permetre DNS per a tothom (necessari per navegar)
+  iptables -A PORTAL_AUTH -p udp --dport 53 -j ACCEPT
+  iptables -A PORTAL_AUTH -p tcp --dport 53 -j ACCEPT
+  # Permetre DHCP per a tothom
+  iptables -A PORTAL_AUTH -p udp --dport 67 -j ACCEPT
+  iptables -A PORTAL_AUTH -p udp --sport 68 -j ACCEPT
+  # Caure al final (DROP per a no autenticats)
+  iptables -A PORTAL_AUTH -j DROP
+
+  # Inserir PORTAL_AUTH al FORWARD ABANS de les regles WiFi
+  iptables -D FORWARD -i "$WIFI_IF" -j PORTAL_AUTH 2>/dev/null
+  iptables -I FORWARD 1 -i "$WIFI_IF" -j PORTAL_AUTH
+
+  # DNAT per defecte: redirigir HTTP no autenticat a la pagina de login
+  iptables -t nat -A PORTAL_CAPTIU_HTTP -p tcp -j DNAT --to-destination "${WIFI_IP}:80"
+
+  # Restaurar sessions actives del conf
+  echo "Restaurant sessions actives..."
+  while IFS=';' read -r user pass ip mac timestamp; do
+    [[ -z "$user" || "$user" =~ ^# ]] && continue
+    [[ -z "$ip" || "$timestamp" == "0" || -z "$timestamp" ]] && continue
+    echo "  Restoring session: $user ($ip)"
+    fnc_afegir_regles_ip "$ip"
+  done < "$PORTAL_CONF_FILE"
+
+  echo "Portal captiu actiu"
+}
+
+fnc_aturar()
+{
+  if [[ "$(fnc_estat)" == "$DESACTIVAT" ]]; then
+    echo "Portal captiu ja esta desactivat"
+    return 0
+  fi
+
+  fnc_carregar_conf
+
+  echo "Eliminant cadenes iptables del portal captiu..."
+
+  # Eliminar jump a PORTAL_AUTH del FORWARD
+  iptables -D FORWARD -i "$WIFI_IF" -j PORTAL_AUTH 2>/dev/null
+
+  # Buidar i eliminar cadena PORTAL_AUTH
+  iptables -F PORTAL_AUTH 2>/dev/null
+  iptables -X PORTAL_AUTH 2>/dev/null
+
+  # Eliminar regla PREROUTING NAT
+  iptables -t nat -D PREROUTING -i "$WIFI_IF" -p tcp --dport 80 -j PORTAL_CAPTIU_HTTP 2>/dev/null
+
+  # Buidar i eliminar cadena PORTAL_CAPTIU_HTTP
+  iptables -t nat -F PORTAL_CAPTIU_HTTP 2>/dev/null
+  iptables -t nat -X PORTAL_CAPTIU_HTTP 2>/dev/null
+
+  # Netejar totes les sessions al conf
+  fnc_netejar_sessions_conf
+
+  echo "Portal captiu desactivat"
+}
+
+fnc_estat()
+{
+  # Comprova que la cadena existeix I que te la regla DNAT (no buida)
+  if iptables -t nat -L PORTAL_CAPTIU_HTTP -n 2>/dev/null | grep -q "DNAT"; then
+    echo "$ACTIVAT"
+  else
+    echo "$DESACTIVAT"
+  fi
+}
+
+fnc_autenticar()
+{
+  USER=$1; PASS=$2; IP=$3; MAC=$4
+
+  if [[ -z "$USER" || -z "$PASS" || -z "$IP" || -z "$MAC" ]]; then
+    echo "ERROR: Falten parametres (user, pass, ip, mac)"
+    return 1
+  fi
+
+  if ! validar_ip "$IP"; then
+    echo "ERROR: IP invalida ($IP)"
+    return 1
+  fi
+
+  if ! validar_mac "$MAC"; then
+    echo "ERROR: MAC invalida ($MAC)"
+    return 1
+  fi
+
+  # Buscar usuari al conf
+  USER_LINE=$(grep -v '^#' "$PORTAL_CONF_FILE" | grep -v '^$' | grep "^${USER};")
+  if [[ -z "$USER_LINE" ]]; then
+    echo "ERROR: Usuari no trobat"
+    return 1
+  fi
+
+  # Verificar contrasenya
+  STORED_PASS=$(echo "$USER_LINE" | cut -d';' -f2)
+  if [[ "$STORED_PASS" != "$PASS" ]]; then
+    echo "ERROR: Contrasenya incorrecta"
+    return 1
+  fi
+
+  # Comprovar si l'usuari ja te sessio activa des d'una altra IP
+  STORED_IP=$(echo "$USER_LINE" | cut -d';' -f3)
+  STORED_TS=$(echo "$USER_LINE" | cut -d';' -f5)
+  if [[ -n "$STORED_IP" && "$STORED_IP" != "$IP" && "$STORED_TS" != "0" && -n "$STORED_TS" ]]; then
+    echo "ERROR: Usuari ja connectat des d'una altra IP ($STORED_IP)"
+    return 1
+  fi
+
+  # Comprovar si aquesta IP ja la usa un altre usuari
+  EXISTING=$(grep -v '^#' "$PORTAL_CONF_FILE" | grep -v '^$' | grep ";${IP};" | grep -v "^${USER};")
+  if [[ -n "$EXISTING" ]]; then
+    echo "ERROR: Aquesta IP ja te sessio activa"
+    return 1
+  fi
+
+  MAC_UP=$(echo "$MAC" | tr '[:lower:]' '[:upper:]')
+  TIMESTAMP=$(date +%s)
+
+  # Afegir regles iptables
+  fnc_afegir_regles_ip "$IP"
+
+  # Actualitzar conf
+  fnc_actualitzar_sessio "$USER" "$IP" "$MAC_UP" "$TIMESTAMP"
+
+  echo "OK: $USER autenticat correctament ($IP)"
+}
+
+fnc_netejar_sessions_conf()
+{
+  while IFS=';' read -r user pass ip mac timestamp; do
+    [[ -z "$user" || "$user" =~ ^# ]] && continue
+    [[ -z "$ip" || "$timestamp" == "0" || -z "$timestamp" ]] && continue
+    fnc_actualitzar_sessio "$user" "" "" "0"
+  done < "$PORTAL_CONF_FILE"
+}
+
+fnc_verificar_sessions()
+{
+  fnc_carregar_conf
+
+  if [[ "$(fnc_estat)" == "$DESACTIVAT" ]]; then
+    return 0
+  fi
+
+  source "$PORTAL_SETTINGS_FILE"
+  NOW=$(date +%s)
+  DURATION_SEC=$((SESSION_DURATION * 60))
+
+  # Obtenir MACs connectades al AP
+  CONNECTED_MACS=$(iw dev "$WIFI_IF" station dump 2>/dev/null | grep "^Station" | awk '{print toupper($2)}')
+
+  while IFS=';' read -r user pass ip mac timestamp; do
+    [[ -z "$user" || "$user" =~ ^# ]] && continue
+    [[ -z "$ip" || "$timestamp" == "0" || -z "$timestamp" ]] && continue
+
+    EXPIRE=0
+    MAC_UP=$(echo "$mac" | tr '[:lower:]' '[:upper:]')
+
+    # Verificar si la MAC encara esta connectada
+    if ! echo "$CONNECTED_MACS" | grep -qw "$MAC_UP"; then
+      EXPIRE=1
+      echo "Sessio expirada (MAC desconnectada): $user ($ip)"
+    fi
+
+    # Verificar si ha caducat per temps
+    if [[ "$EXPIRE" -eq 0 ]] && [ "$((timestamp + DURATION_SEC))" -lt "$NOW" ]; then
+      EXPIRE=1
+      echo "Sessio expirada (temps): $user ($ip)"
+    fi
+
+    if [[ "$EXPIRE" -eq 1 ]]; then
+      fnc_eliminar_regles_ip "$ip"
+      fnc_actualitzar_sessio "$user" "" "" "0"
+    fi
+  done < "$PORTAL_CONF_FILE"
+}
+
+fnc_configurar()
+{
+  ACCIO=$1
+  shift
+
+  case "$ACCIO" in
+
+    afegir_usuari)
+      USER=$1; PASS=$2
+      if [[ -z "$USER" || -z "$PASS" ]]; then
+        echo "ERROR: Us: configurar afegir_usuari <usuari> <contrasenya>"
+        return 1
+      fi
+      if ! validar_password_segura "$PASS"; then
+        echo "ERROR: Contrasenya amb caracters invalids"
+        return 1
+      fi
+      if grep -v '^#' "$PORTAL_CONF_FILE" | grep -v '^$' | grep -q "^${USER};"; then
+        echo "WARN: L'usuari ja existeix"
+        return 0
+      fi
+      echo "${USER};${PASS};;;0" >> "$PORTAL_CONF_FILE"
+      echo "OK: Usuari afegit: $USER"
+      ;;
+
+    eliminar_usuari)
+      USER=$1
+      if [[ -z "$USER" ]]; then
+        echo "ERROR: Us: configurar eliminar_usuari <usuari>"
+        return 1
+      fi
+      USER_LINE=$(grep -v '^#' "$PORTAL_CONF_FILE" | grep -v '^$' | grep "^${USER};")
+      if [[ -z "$USER_LINE" ]]; then
+        echo "WARN: L'usuari no existeix"
+        return 0
+      fi
+      # Netejar regles iptables si tenia sessio
+      IP=$(echo "$USER_LINE" | cut -d';' -f3)
+      TS=$(echo "$USER_LINE" | cut -d';' -f5)
+      if [[ -n "$IP" && "$TS" != "0" ]]; then
+        fnc_eliminar_regles_ip "$IP"
+      fi
+      # Eliminar del conf
+      TMPFILE=$(mktemp)
+      grep -v "^${USER};" "$PORTAL_CONF_FILE" > "$TMPFILE" || true
+      mv "$TMPFILE" "$PORTAL_CONF_FILE"
+      chmod 640 "$PORTAL_CONF_FILE"
+      echo "OK: Usuari eliminat: $USER"
+      ;;
+
+    llistar_usuaris)
+      echo "#usuari;ip;timestamp;estat"
+      while IFS=';' read -r user pass ip mac timestamp; do
+        [[ -z "$user" || "$user" =~ ^# ]] && continue
+        [[ -z "$user" ]] && continue
+        if [[ -n "$ip" && "$timestamp" != "0" && -n "$timestamp" ]]; then
+          echo "${user};${ip};${timestamp};CONNECTAT"
+        else
+          echo "${user};;;0;DESCONNECTAT"
+        fi
+      done < "$PORTAL_CONF_FILE"
+      ;;
+
+    netejar_sessions)
+      if [[ "$(fnc_estat)" == "$ACTIVAT" ]]; then
+        while IFS=';' read -r user pass ip mac timestamp; do
+          [[ -z "$user" || "$user" =~ ^# ]] && continue
+          [[ -z "$ip" || "$timestamp" == "0" || -z "$timestamp" ]] && continue
+          fnc_eliminar_regles_ip "$ip"
+          fnc_actualitzar_sessio "$user" "" "" "0"
+        done < "$PORTAL_CONF_FILE"
+      else
+        fnc_netejar_sessions_conf
+      fi
+      echo "OK: Sessions netejades"
+      ;;
+
+    activar_cron)
+      source "$PORTAL_SETTINGS_FILE"
+      cat > "$CRON_FILE" << CRONEOF
+# JSBach Portal Captiu - verificacio de sessions automatica
+*/${CRON_INTERVAL} * * * * root $DIR/$PROJECTE/$DIR_SCRIPTS/portal-captiu-cron
+CRONEOF
+      sed -i 's/^CRON_ENABLED=.*/CRON_ENABLED=1/' "$PORTAL_SETTINGS_FILE"
+      echo "OK: Cron activat (interval: cada ${CRON_INTERVAL} minuts)"
+      ;;
+
+    desactivar_cron)
+      rm -f "$CRON_FILE"
+      sed -i 's/^CRON_ENABLED=.*/CRON_ENABLED=0/' "$PORTAL_SETTINGS_FILE"
+      echo "OK: Cron desactivat"
+      ;;
+
+    guardar_config)
+      DUR=$1; INTERVAL=$2
+      if [[ -z "$DUR" || -z "$INTERVAL" ]]; then
+        echo "ERROR: Us: configurar guardar_config <durada_min> <interval_min>"
+        return 1
+      fi
+      if ! [[ "$DUR" =~ ^[0-9]+$ ]] || ! [[ "$INTERVAL" =~ ^[0-9]+$ ]]; then
+        echo "ERROR: Els valors han de ser nombres enters"
+        return 1
+      fi
+      source "$PORTAL_SETTINGS_FILE"
+      cat > "$PORTAL_SETTINGS_FILE" << CONFEOF
+SESSION_DURATION=${DUR}
+CRON_INTERVAL=${INTERVAL}
+CRON_ENABLED=${CRON_ENABLED}
+CONFEOF
+      # Actualitzar cron si estava actiu
+      if [[ "$CRON_ENABLED" == "1" && -f "$CRON_FILE" ]]; then
+        cat > "$CRON_FILE" << CRONEOF
+# JSBach Portal Captiu - verificacio de sessions automatica
+*/${INTERVAL} * * * * root $DIR/$PROJECTE/$DIR_SCRIPTS/portal-captiu-cron
+CRONEOF
+      fi
+      echo "OK: Configuracio guardada (sessio: ${DUR} min, cron: ${INTERVAL} min)"
+      ;;
+
+    *)
+      echo "Opcions valides:"
+      echo "  configurar afegir_usuari <usuari> <contrasenya>"
+      echo "  configurar eliminar_usuari <usuari>"
+      echo "  configurar llistar_usuaris"
+      echo "  configurar netejar_sessions"
+      echo "  configurar activar_cron"
+      echo "  configurar desactivar_cron"
+      echo "  configurar guardar_config <durada_min> <interval_min>"
+      return 1
+      ;;
+  esac
+}
+
+######################################################################
+###  MAIN
+######################################################################
+
+MSG="falta [iniciar, aturar, estat, autenticar, configurar, verificar_sessions]"
+
+if [ $# -lt 1 ]; then
+  echo "$MSG"
+  exit 1
+fi
+
+OPCIO_1=$1
+shift
+
+case "$OPCIO_1" in
+  iniciar)
+    fnc_iniciar $@
+    ;;
+  aturar)
+    fnc_aturar $@
+    ;;
+  estat)
+    fnc_estat $@
+    ;;
+  autenticar)
+    fnc_autenticar $@
+    ;;
+  configurar)
+    fnc_configurar $@
+    ;;
+  verificar_sessions)
+    fnc_verificar_sessions $@
+    ;;
+  *)
+    echo "$MSG"
+    ;;
+esac
